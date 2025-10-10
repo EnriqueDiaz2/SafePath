@@ -9,6 +9,46 @@ import SwiftUI
 import Foundation
 import Combine
 
+// MARK: - Enumeración de rutas de Onboarding
+/*
+ Define las diferentes pantallas del flujo de onboarding
+*/
+enum OnboardingPath {
+    case inicio1
+    case inicio2
+    case inicio3
+    case inicio4
+    case home
+}
+
+// MARK: - Gestor de Onboarding
+/*
+ Clase que maneja el estado del onboarding (pantallas de inicio)
+*/
+class OnboardingManager: ObservableObject {
+    @Published var hasCompletedOnboarding: Bool {
+        didSet {
+            UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
+        }
+    }
+    
+    @Published var currentPath: OnboardingPath = .inicio1
+    
+    init() {
+        // Verificar si ya completó el onboarding anteriormente
+        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+    }
+    
+    func completeOnboarding() {
+        hasCompletedOnboarding = true
+    }
+    
+    func resetOnboarding() {
+        hasCompletedOnboarding = false
+        currentPath = .inicio1
+    }
+}
+
 // MARK: - Gestor de Autenticación
 /*
  AuthenticationManager es una clase que maneja el estado de autenticación
@@ -79,9 +119,9 @@ struct User: Identifiable {
 class AppDataManager: ObservableObject {
     // Lista de lugares favoritos para mostrar en el mapa
     @Published var favoritePlaces: [Place] = [
-        Place(name: "Casa", subtitle: "Mi hogar", latitude: 40.7128, longitude: -74.0060),
-        Place(name: "Trabajo", subtitle: "Oficina principal", latitude: 40.7589, longitude: -73.9851),
-        Place(name: "Parque Central", subtitle: "Lugar favorito para caminar", latitude: 40.7812, longitude: -73.9665)
+        Place(name: "Restaurante", subtitle: "Comida tradicional mexicana", latitude: 20.6737, longitude: -103.3444),
+        Place(name: "Hospital Civil", subtitle: "Hospital principal", latitude: 20.6756, longitude: -103.3467),
+        Place(name: "Catedral de Guadalajara", subtitle: "Lugar histórico", latitude: 20.6778, longitude: -103.3474)
     ]
     
     // Lista de elementos para la vista principal

@@ -1,0 +1,48 @@
+{
+  "source": "/Users/MacOsLab/Documents/SwiftSafe/SwiftSafe/Views/Inicio2View.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Elige tu camino",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "¿Qué te gustaría hacer?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ir al inicio",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ver tutorial",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Configuración inicial",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 96
+        }
+      }
+    ]
+  },
+  "version": 1
+}

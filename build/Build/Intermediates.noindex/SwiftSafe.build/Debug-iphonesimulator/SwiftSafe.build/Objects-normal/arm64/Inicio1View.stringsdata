@@ -1,0 +1,48 @@
+{
+  "source": "/Users/MacOsLab/Documents/SwiftSafe/SwiftSafe/Views/Inicio1View.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Tu seguridad es nuestra prioridad",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bienvenido a",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Safe",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Path",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Comenzar",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 64
+        }
+      }
+    ]
+  },
+  "version": 1
+}
