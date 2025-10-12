@@ -127,12 +127,12 @@ struct EventCard: View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.title3)
+                    .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
                 Text(subtitle)
-                    .font(.subheadline)
+                    .font(.title3)
                     .foregroundColor(.secondary)
             }
             .padding(.leading)
@@ -322,11 +322,12 @@ struct EventCardWithFlags: View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.headline)
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.title3)
                     .foregroundColor(.secondary)
             }
             .padding(.leading)

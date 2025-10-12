@@ -140,7 +140,7 @@ struct ProfileView: View {
                 UserStatCard(
                     title: "Lugares\nVisitados",
                     value: "24",
-                    icon: "mappin.and.ellipse",
+                    icon: "map.fill",
                     color: .blue
                 )
                 
@@ -186,7 +186,7 @@ struct ProfileView: View {
                 ProfileOptionRow(
                     title: "Mis Lugares",
                     subtitle: "Gestiona tus lugares guardados",
-                    icon: "mappin.circle",
+                    icon: "map.circle.fill",
                     color: .green
                 ) {
                     // Navegar a lugares guardados

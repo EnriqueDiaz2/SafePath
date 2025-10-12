@@ -52,17 +52,19 @@ struct CustomTabBar: View {
                 // Botón Inicio
                 TabBarButton(
                     icon: "house.fill",
-                    isSelected: selectedTab == 0
+                    isSelected: selectedTab == 0,
+                    useCustomIcon: false
                 ) {
                     selectedTab = 0
                 }
                 
                 Spacer()
                 
-                // Botón Mapa (centro con ícono de ubicación)
+                // Botón Mapa (centro con ícono personalizado de marcador)
                 TabBarButton(
-                    icon: "mappin.and.ellipse",
-                    isSelected: selectedTab == 1
+                    icon: "marcador",
+                    isSelected: selectedTab == 1,
+                    useCustomIcon: true
                 ) {
                     selectedTab = 1
                 }
@@ -72,7 +74,8 @@ struct CustomTabBar: View {
                 // Botón Perfil
                 TabBarButton(
                     icon: "person.fill",
-                    isSelected: selectedTab == 2
+                    isSelected: selectedTab == 2,
+                    useCustomIcon: false
                 ) {
                     selectedTab = 2
                 }
@@ -91,14 +94,25 @@ struct CustomTabBar: View {
 struct TabBarButton: View {
     let icon: String
     let isSelected: Bool
+    let useCustomIcon: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(isSelected ? .black : .gray)
-                .frame(width: 44, height: 44)
+            if useCustomIcon {
+                Image(icon)
+                    .resizable()
+                    .renderingMode(.template)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 24)
+                    .foregroundColor(isSelected ? .black : .gray)
+                    .frame(width: 44, height: 44)
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(isSelected ? .black : .gray)
+                    .frame(width: 44, height: 44)
+            }
         }
     }
 }
