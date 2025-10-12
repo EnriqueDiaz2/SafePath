@@ -21,11 +21,12 @@ struct HomeView: View {
                             .padding(.horizontal)
                         
                         TabView {
-                            EventCard(
-                                title: "México vs Qatar",
+                            EventCardWithFlags(
+                                title: "México vs USA",
                                 subtitle: "Jueves 11 de junio de 2026",
-                                image: "trophy.fill",
-                                backgroundColor: Color(red: 0.8, green: 0.2, blue: 0.4)
+                                flagImage1: "bandera-mexico",
+                                flagImage2: "bandera-usa",
+                                backgroundColor: Color.black
                             )
                             
                             EventCard(
@@ -306,6 +307,58 @@ struct ChatGroup: Identifiable {
     let count: Int
     let icon: String
     let color: Color
+}
+
+// MARK: - Event Card con Banderas
+struct EventCardWithFlags: View {
+    let title: String
+    let subtitle: String
+    let flagImage1: String
+    let flagImage2: String
+    let backgroundColor: Color
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.leading)
+            
+            Spacer()
+            
+            HStack(spacing: 12) {
+                Image(flagImage1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                
+                Text("VS")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Image(flagImage2)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+            }
+            .padding(.trailing)
+        }
+        .frame(height: 140)
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(15)
+        .padding(.horizontal)
+    }
 }
 
 struct HomeView_Previews: PreviewProvider {

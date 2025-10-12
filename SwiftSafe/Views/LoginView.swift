@@ -66,7 +66,7 @@ struct WelcomeScreenView: View {
                 Spacer()
                 
                 // Logo
-                Image("SafePathLogo")
+                Image("logo1")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 180, height: 180)

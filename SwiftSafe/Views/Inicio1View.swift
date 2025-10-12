@@ -20,7 +20,7 @@ struct Inicio1View: View {
                 Spacer()
                 
                 // Logo
-                Image("fondo_sin")
+                Image("logo1")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 180, height: 180)
