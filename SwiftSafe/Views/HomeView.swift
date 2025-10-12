@@ -7,7 +7,7 @@ struct HomeView: View {
     
     @State private var showingChatGroups = false
     @State private var showingFilterSheet = false
-    @State private var selectedFilter = "Mis chats"
+    @State private var selectedFilter = "Todos los chats"
     
     var body: some View {
         NavigationView {
@@ -163,9 +163,9 @@ struct ChatGroupsView: View {
     @Binding var selectedFilter: String
     
     @State private var chatGroups = [
-        ChatGroup(name: "León", count: 3, icon: "⚽️", color: Color.green),
-        ChatGroup(name: "Chivas", count: 2, icon: "🐐", color: Color.red),
-        ChatGroup(name: "Pumas", count: 5, icon: "🐆", color: Color.blue)
+        ChatGroup(name: "Social Feed", count: 0, image: "", color: Color.green),
+        ChatGroup(name: "Estados Unidos", count: 0, image: "", color: Color.red),
+        ChatGroup(name: "Mexico", count: 0, image: "", color: Color.blue)
     ]
     
     var filteredChats: [ChatGroup] {
@@ -236,7 +236,7 @@ struct ChatGroupRow: View {
     
     var body: some View {
         HStack {
-            Text("\(chatGroup.name) (\(chatGroup.count))")
+            Text("\(chatGroup.name)")
                 .font(.headline)
                 .foregroundColor(.primary)
             
@@ -247,7 +247,7 @@ struct ChatGroupRow: View {
                     .fill(chatGroup.color.opacity(0.2))
                     .frame(width: 60, height: 60)
                 
-                Text(chatGroup.icon)
+                Text(chatGroup.image)
                     .font(.system(size: 35))
             }
         }
@@ -261,7 +261,7 @@ struct FilterSheetView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var selectedFilter: String
     
-    let filterOptions = ["Mis chats", "Equipo", "Cede\n(ciudad)", "País", "Fase"]
+    let filterOptions = ["Todos los chats", "Paises", "Cede\n(ciudad)", "Fase"]
     
     var body: some View {
         VStack(spacing: 0) {
@@ -305,7 +305,8 @@ struct ChatGroup: Identifiable {
     let id = UUID()
     let name: String
     let count: Int
-    let icon: String
+    //let icon: String
+    let image: String
     let color: Color
 }
 
