@@ -1,2 +1,0 @@
-Target dependency graph (1 target)
-Target 'SwiftSafe' in project 'SwiftSafe' (no dependencies)

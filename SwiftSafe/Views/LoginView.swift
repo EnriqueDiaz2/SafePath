@@ -56,11 +56,19 @@ enum LoginScreen {
 // MARK: - Pantalla de Bienvenida
 struct WelcomeScreenView: View {
     @Binding var currentScreen: LoginScreen
+    @State private var showButtons = false
     
     var body: some View {
         ZStack {
-            Color(red: 0.8, green: 0.95, blue: 0.9)
-                .ignoresSafeArea()
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "EDFBF3"),
+                    Color(hex: "8ED9A4")
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 30) {
                 Spacer()
@@ -83,7 +91,7 @@ struct WelcomeScreenView: View {
                             .foregroundColor(.black)
                         Text("Path")
                             .font(.system(size: 40, weight: .bold))
-                            .foregroundColor(.green)
+                            .foregroundColor(Color(hex: "179757"))
                     }
                 }
                 
@@ -97,47 +105,58 @@ struct WelcomeScreenView: View {
                 Spacer()
                 
                 // Opciones
-                VStack(spacing: 20) {
-                    // Botón para ir directo al login
-                    Button(action: {
-                        currentScreen = .login
-                    }) {
-                        HStack {
-                            Image(systemName: "house.fill")
-                                .font(.title2)
-                            Text("Entrar")
-                                .font(.headline)
+                if showButtons {
+                    VStack(spacing: 20) {
+                        // Botón para ir directo al login
+                        Button(action: {
+                            currentScreen = .login
+                        }) {
+                            HStack {
+                                Image(systemName: "house.fill")
+                                    .font(.title2)
+                                Text("Entrar")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .cornerRadius(15)
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.green)
-                        .cornerRadius(15)
-                    }
-                    
-                    // Botón para configuración
-                    Button(action: {
-                        currentScreen = .settings
-                    }) {
-                        HStack {
-                            Image(systemName: "gear")
-                                .font(.title2)
-                            Text("Configuración")
-                                .font(.headline)
+                        
+                        // Botón para configuración
+                        Button(action: {
+                            currentScreen = .settings
+                        }) {
+                            HStack {
+                                Image(systemName: "gear")
+                                    .font(.title2)
+                                Text("Configuración")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.green)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(15)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .stroke(Color.green, lineWidth: 2)
+                            )
                         }
-                        .foregroundColor(.green)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(15)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 15)
-                                .stroke(Color.green, lineWidth: 2)
-                        )
                     }
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 50)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 50)
+            }
+        }
+        .onAppear {
+            // Mostrar los botones después de 2.5 segundos
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    showButtons = true
+                }
             }
         }
     }
@@ -385,8 +404,15 @@ struct SettingsScreenView: View {
     
     var body: some View {
         ZStack {
-            Color(red: 0.8, green: 0.95, blue: 0.9)
-                .ignoresSafeArea()
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "EDFBF3"),
+                    Color(hex: "8ED9A4")
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 30) {
                 Spacer()

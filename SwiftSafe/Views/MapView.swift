@@ -26,8 +26,50 @@ struct MapView: View {
     @State private var showingFilters = false
     @State private var navigateToAlerts = false
     
+    // Nuevos estados para selección de ubicación
+    @State private var selectedCoordinate: CLLocationCoordinate2D?
+    @State private var showingSaveLocation = false
+    @State private var newLocationName = ""
+    @State private var newLocationDescription = ""
+    @State private var isSelectingLocation = false
+    @GestureState private var dragLocation = CGPoint.zero
+    
+    // Estados para selección rápida de ubicación nueva
+    @State private var showingQuickLocationOptions = false
+    @State private var temporaryPlace: Place?
+    
     // Manager de ubicación
     @StateObject private var locationManager = LocationManager()
+    
+    // Estado para mostrar/ocultar lugares cercanos
+    @State private var showNearbyPlaces = true
+    
+    // Computed property para lugares filtrados (guardados + cercanos)
+    var filteredPlaces: [Place] {
+        var places = appDataManager.favoritePlaces
+        
+        // Agregar lugares cercanos si está activado
+        if showNearbyPlaces {
+            let savedIds = Set(appDataManager.favoritePlaces.map { $0.id })
+            let nearby = appDataManager.nearbyPlaces.filter { !savedIds.contains($0.id) }
+            places.append(contentsOf: nearby)
+        }
+        
+        // Filtrar por búsqueda
+        if searchText.isEmpty {
+            return places
+        } else {
+            return places.filter { place in
+                place.name.localizedCaseInsensitiveContains(searchText) ||
+                place.subtitle.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
+    // Verificar si un lugar está guardado
+    func isPlaceSaved(_ place: Place) -> Bool {
+        return appDataManager.favoritePlaces.contains(where: { $0.id == place.id })
+    }
     
     var body: some View {
         NavigationView {
@@ -37,14 +79,17 @@ struct MapView: View {
                     interactionModes: .all,
                     showsUserLocation: true,
                     userTrackingMode: .none,
-                    annotationItems: appDataManager.favoritePlaces) { place in
+                    annotationItems: filteredPlaces) { place in
                     
                     // Anotaciones personalizadas para cada lugar
                     MapAnnotation(coordinate: CLLocationCoordinate2D(
                         latitude: place.latitude,
                         longitude: place.longitude
                     )) {
-                        PlaceAnnotationView(place: place) {
+                        PlaceAnnotationView(
+                            place: place,
+                            isSaved: isPlaceSaved(place)
+                        ) {
                             selectedPlace = place
                             showingLocationDetails.toggle()
                         }
@@ -55,36 +100,125 @@ struct MapView: View {
                     // Solicitar permisos de ubicación al aparecer la vista
                     locationManager.requestLocationPermission()
                 }
+                .onLongPressGesture(minimumDuration: 0.5) {
+                    // Long press en el mapa para seleccionar nueva ubicación
+                    handleMapLongPress()
+                }
+                
+                // Pin centrado cuando se está seleccionando ubicación
+                if isSelectingLocation {
+                    VStack {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                        
+                        Image(systemName: "triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .offset(x: 0, y: -8)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
                 
                 // MARK: - Barra de Búsqueda
                 VStack {
-                    HStack(spacing: 12) {
-                        // Barra de búsqueda
+                    // Mensaje de instrucción cuando está en modo selección
+                    if isSelectingLocation {
                         HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            
-                            TextField("Buscar ubicaciones", text: $searchText)
-                                .textFieldStyle(PlainTextFieldStyle())
+                            Image(systemName: "hand.point.up.left.fill")
+                                .foregroundColor(.white)
+                            Text("Mueve el mapa para seleccionar la ubicación")
+                                .font(.subheadline)
+                                .foregroundColor(.white)
                         }
-                        .padding(10)
-                        .background(Color.white)
+                        .padding()
+                        .background(Color.blue)
                         .cornerRadius(10)
                         .shadow(radius: 3)
-                        
-                        // Botón de filtros
-                        Button(action: { showingFilters.toggle() }) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                                .padding()
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(radius: 3)
+                        .padding(.horizontal)
+                        .padding(.top, 60)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    } else {
+                        HStack(spacing: 12) {
+                            // Barra de búsqueda
+                            HStack {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(.gray)
+                                
+                                TextField("Buscar ubicaciones", text: $searchText)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                
+                                // Botón para limpiar búsqueda
+                                if !searchText.isEmpty {
+                                    Button(action: { searchText = "" }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                            }
+                            .padding(10)
+                            .background(Color.white)
+                            .cornerRadius(10)
+                            .shadow(radius: 3)
+                            
+                            // Botón de filtros
+                            Button(action: { showingFilters.toggle() }) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                    .padding()
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 3)
+                            }
                         }
+                        .padding(.horizontal)
+                        .padding(.top, 60)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 60)
+                    
+                    // Contador de resultados filtrados
+                    if !searchText.isEmpty && !isSelectingLocation {
+                        HStack {
+                            Text("\(filteredPlaces.count) resultado(s) encontrado(s)")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue)
+                                .cornerRadius(15)
+                        }
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    
+                    // Leyenda de marcadores
+                    if !isSelectingLocation && showNearbyPlaces {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                                Text("Guardados")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: "mappin.circle")
+                                    .foregroundColor(.blue)
+                                    .font(.caption)
+                                Text("Cercanos")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(15)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                     
                     Spacer()
                 }
@@ -94,28 +228,45 @@ struct MapView: View {
                     HStack {
                         Spacer()
                         
-                        // Botón de opciones del mapa
-                        Button(action: { showingMapOptions.toggle() }) {
-                            Image(systemName: "map")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                                .padding()
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
+                        VStack(spacing: 12) {
+                            // Botón de opciones del mapa
+                            Button(action: { showingMapOptions.toggle() }) {
+                                Image(systemName: "map")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                    .padding()
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
+                            .actionSheet(isPresented: $showingMapOptions) {
+                                ActionSheet(
+                                    title: Text("Tipo de Mapa"),
+                                    buttons: [
+                                        .default(Text("Estándar")) { mapType = .standard },
+                                        .default(Text("Satélite")) { mapType = .satellite },
+                                        .default(Text("Híbrido")) { mapType = .hybrid },
+                                        .cancel(Text("Cancelar"))
+                                    ]
+                                )
+                            }
+                            
+                            // Botón para mostrar/ocultar lugares cercanos
+                            Button(action: { 
+                                withAnimation {
+                                    showNearbyPlaces.toggle()
+                                }
+                            }) {
+                                Image(systemName: showNearbyPlaces ? "eye.fill" : "eye.slash.fill")
+                                    .font(.title2)
+                                    .foregroundColor(showNearbyPlaces ? .green : .gray)
+                                    .padding()
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
                         }
                         .padding(.trailing)
-                        .actionSheet(isPresented: $showingMapOptions) {
-                            ActionSheet(
-                                title: Text("Tipo de Mapa"),
-                                buttons: [
-                                    .default(Text("Estándar")) { mapType = .standard },
-                                    .default(Text("Satélite")) { mapType = .satellite },
-                                    .default(Text("Híbrido")) { mapType = .hybrid },
-                                    .cancel(Text("Cancelar"))
-                                ]
-                            )
-                        }
                     }
                     
                     Spacer()
@@ -135,32 +286,61 @@ struct MapView: View {
                         
                         Spacer()
                         
-                        // Botón para agregar nuevo lugar
-                        Button(action: addNewPlace) {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
+                        // Botones de acción
+                        if isSelectingLocation {
+                            // Botón para confirmar ubicación
+                            Button(action: confirmLocation) {
+                                Image(systemName: "checkmark")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.green)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
+                            .padding(.trailing, 8)
+                            
+                            // Botón para cancelar selección
+                            Button(action: cancelLocationSelection) {
+                                Image(systemName: "xmark")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
+                            .padding(.trailing)
+                        } else {
+                            // Botón para agregar nuevo lugar
+                            Button(action: addNewPlace) {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
+                            .padding(.trailing)
                         }
-                        .padding(.trailing)
                     }
                     .padding(.bottom, 30)
                 }
                 
                 // MARK: - Lista de Lugares (Panel Deslizable)
-                VStack {
-                    Spacer()
-                    
-                    PlacesListPanel(places: appDataManager.favoritePlaces) { place in
-                        // Centrar mapa en el lugar seleccionado
-                        withAnimation {
-                            region.center = CLLocationCoordinate2D(
-                                latitude: place.latitude,
-                                longitude: place.longitude
-                            )
+                if !isSelectingLocation {
+                    VStack {
+                        Spacer()
+                        
+                        PlacesListPanel(places: filteredPlaces) { place in
+                            // Centrar mapa en el lugar seleccionado
+                            withAnimation {
+                                region.center = CLLocationCoordinate2D(
+                                    latitude: place.latitude,
+                                    longitude: place.longitude
+                                )
+                            }
                         }
                     }
                 }
@@ -175,6 +355,36 @@ struct MapView: View {
             .sheet(isPresented: $showingFilters) {
                 FilterOptionsView()
             }
+            .sheet(isPresented: $showingSaveLocation) {
+                SaveLocationView(
+                    coordinate: selectedCoordinate ?? CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                    onSave: { name, description in
+                        saveNewLocation(name: name, description: description)
+                    }
+                )
+            }
+            .sheet(isPresented: $showingQuickLocationOptions) {
+                if let tempPlace = temporaryPlace {
+                    QuickLocationOptionsView(
+                        place: tempPlace,
+                        onSaveAndView: { savedPlace in
+                            appDataManager.favoritePlaces.append(savedPlace)
+                            selectedPlace = savedPlace
+                            showingQuickLocationOptions = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showingLocationDetails = true
+                            }
+                        },
+                        onViewOnly: { place in
+                            selectedPlace = place
+                            showingQuickLocationOptions = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showingLocationDetails = true
+                            }
+                        }
+                    )
+                }
+            }
             .background(
                 NavigationLink(destination: EmergencyAlertsView(), isActive: $navigateToAlerts) {
                     EmptyView()
@@ -184,6 +394,27 @@ struct MapView: View {
     }
     
     // MARK: - Métodos
+    
+    /*
+     Maneja el long press en el mapa para seleccionar una ubicación nueva
+    */
+    private func handleMapLongPress() {
+        // Crear un lugar temporal en el centro del mapa
+        let coordinate = region.center
+        
+        // Crear un lugar temporal
+        temporaryPlace = Place(
+            name: "Ubicación Seleccionada",
+            subtitle: "Toca para agregar detalles",
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            photos: [],
+            reviews: []
+        )
+        
+        // Mostrar opciones
+        showingQuickLocationOptions = true
+    }
     
     /*
      Centra el mapa en la ubicación actual del usuario
@@ -204,14 +435,43 @@ struct MapView: View {
      Función para agregar un nuevo lugar (simulada)
     */
     private func addNewPlace() {
+        // Activar modo de selección de ubicación
+        isSelectingLocation = true
+    }
+    
+    /*
+     Confirmar la ubicación seleccionada
+    */
+    private func confirmLocation() {
+        selectedCoordinate = region.center
+        isSelectingLocation = false
+        showingSaveLocation = true
+    }
+    
+    /*
+     Cancelar la selección de ubicación
+    */
+    private func cancelLocationSelection() {
+        isSelectingLocation = false
+        selectedCoordinate = nil
+    }
+    
+    /*
+     Función para guardar una nueva ubicación
+    */
+    private func saveNewLocation(name: String, description: String) {
+        guard let coordinate = selectedCoordinate else { return }
+        
         let newPlace = Place(
-            name: "Nuevo Lugar",
-            subtitle: "Lugar agregado desde el mapa",
-            latitude: region.center.latitude,
-            longitude: region.center.longitude
+            name: name.isEmpty ? "Nuevo Lugar" : name,
+            subtitle: description.isEmpty ? "Lugar agregado desde el mapa" : description,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
         )
         
         appDataManager.favoritePlaces.append(newPlace)
+        selectedCoordinate = nil
+        showingSaveLocation = false
     }
 }
 
@@ -267,24 +527,30 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 /*
  Vista personalizada para las anotaciones en el mapa
 */
+// MARK: - Vista de Anotación Personalizada
+/*
+ Vista personalizada para las anotaciones en el mapa
+*/
 struct PlaceAnnotationView: View {
     let place: Place
+    let isSaved: Bool
     let onTap: () -> Void
     
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 0) {
-                Image(systemName: "mappin.circle.fill")
+                // Icono diferente según si está guardado o no
+                Image(systemName: isSaved ? "mappin.circle.fill" : "mappin.circle")
                     .font(.title)
-                    .foregroundColor(.red)
+                    .foregroundColor(isSaved ? .red : .blue)
                 
                 Image(systemName: "triangle.fill")
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(isSaved ? .red : .blue)
                     .offset(x: 0, y: -5)
             }
         }
-        .scaleEffect(1.2)
+        .scaleEffect(isSaved ? 1.2 : 1.0)
     }
 }
 
@@ -442,156 +708,308 @@ struct CompactPlaceCard: View {
  Vista modal que muestra información detallada de un lugar
 */
 struct LocationDetailView: View {
-    let place: Place
+    @State var place: Place
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var appDataManager: AppDataManager
+    
+    @State private var showingAddReview = false
+    @State private var showingAddPhoto = false
+    @State private var showingImagePicker = false
+    @State private var selectedImage: UIImage?
+    @State private var showingSaveConfirmation = false
+    
+    // Verificar si el lugar ya está guardado
+    var isPlaceSaved: Bool {
+        appDataManager.favoritePlaces.contains(where: { $0.id == place.id })
+    }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Imagen del lugar
-            ZStack(alignment: .topLeading) {
-                // Imagen de fondo (simulada con gradiente)
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.orange.opacity(0.6), Color.brown.opacity(0.4)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 250)
-                    .overlay(
-                        Image(systemName: "photo")
-                            .font(.system(size: 60))
-                            .foregroundColor(.white.opacity(0.7))
-                    )
-                
-                // Botón de cerrar
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark")
-                        .font(.title3)
-                        .foregroundColor(.white)
-                        .padding(10)
-                        .background(Color.black.opacity(0.5))
-                        .clipShape(Circle())
-                }
-                .padding()
-            }
-            
-            // Información del lugar
-            VStack(alignment: .leading, spacing: 16) {
-                // Nombre del lugar
-                Text(place.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                // Rating y distancia
-                HStack(spacing: 16) {
-                    // Rating
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.orange)
-                            .font(.caption)
-                        Text("4.5 (29 reseñas)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Distancia
-                    HStack(spacing: 4) {
-                        Image(systemName: "figure.walk")
-                            .foregroundColor(.blue)
-                            .font(.caption)
-                        Text("A 50 metros")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // Botón de Calificar
-                Button(action: {}) {
-                    Text("Calificar")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.black)
-                        .cornerRadius(10)
-                }
-                .padding(.top, 8)
-                
-                Divider()
-                    .padding(.vertical, 8)
-                
-                // Descripción
-                Text(place.subtitle)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                
-                // Coordenadas (opcional, en gris claro)
-                HStack {
-                    Image(systemName: "location.circle")
-                        .foregroundColor(.gray)
-                        .font(.caption)
-                    
-                    Text("Lat: \(String(format: "%.4f", place.latitude)), Lng: \(String(format: "%.4f", place.longitude))")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                .padding(.top, 4)
-                
-                Spacer()
-                
-                // Botones de acción
-                VStack(spacing: 12) {
-                    Button(action: openInMaps) {
-                        HStack {
-                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                                .foregroundColor(.blue)
-                            
-                            Text("Cómo llegar")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Imagen del lugar
+                    ZStack(alignment: .topLeading) {
+                        // Imagen de fondo (simulada con gradiente o foto real)
+                        if let firstPhoto = place.photos.first, let uiImage = UIImage(named: firstPhoto) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 250)
+                                .clipped()
+                        } else {
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.orange.opacity(0.6), Color.brown.opacity(0.4)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(height: 250)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.white.opacity(0.7))
+                                )
+                        }
+                        
+                        // Botón de cerrar
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(Color.black.opacity(0.5))
+                                .clipShape(Circle())
                         }
                         .padding()
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(12)
                     }
                     
-                    Button(action: shareLocation) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                                .foregroundColor(.green)
+                    // Información del lugar
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Nombre del lugar
+                        Text(place.name)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        // Rating y distancia
+                        HStack(spacing: 16) {
+                            // Rating
+                            HStack(spacing: 4) {
+                                ForEach(0..<5) { index in
+                                    Image(systemName: index < Int(place.rating.rounded()) ? "star.fill" : "star")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                }
+                                Text("\(String(format: "%.1f", place.rating)) (\(place.reviews.count) reseñas)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                             
-                            Text("Compartir ubicación")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            // Distancia
+                            HStack(spacing: 4) {
+                                Image(systemName: "figure.walk")
+                                    .foregroundColor(.blue)
+                                    .font(.caption)
+                                Text("A 50 metros")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
-                        .padding()
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(12)
+                        
+                        // Botones de acción para agregar contenido
+                        HStack(spacing: 12) {
+                            Button(action: { showingAddReview = true }) {
+                                HStack {
+                                    Image(systemName: "star.bubble")
+                                    Text("Agregar Reseña")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                            }
+                            
+                            Button(action: { showingImagePicker = true }) {
+                                HStack {
+                                    Image(systemName: "photo")
+                                    Text("Agregar Foto")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.green)
+                                .cornerRadius(10)
+                            }
+                        }
+                        .padding(.top, 8)
+                        
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        // Descripción
+                        Text(place.subtitle)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                        
+                        // Coordenadas (opcional, en gris claro)
+                        HStack {
+                            Image(systemName: "location.circle")
+                                .foregroundColor(.gray)
+                                .font(.caption)
+                            
+                            Text("Lat: \(String(format: "%.4f", place.latitude)), Lng: \(String(format: "%.4f", place.longitude))")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.top, 4)
+                        
+                        // Galería de fotos
+                        if !place.photos.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Fotos (\(place.photos.count))")
+                                    .font(.headline)
+                                    .padding(.top, 8)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(place.photos, id: \.self) { photo in
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color.gray.opacity(0.3))
+                                                .frame(width: 120, height: 120)
+                                                .overlay(
+                                                    Image(systemName: "photo.fill")
+                                                        .foregroundColor(.gray)
+                                                )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Sección de reseñas
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Reseñas")
+                                    .font(.headline)
+                                Spacer()
+                                if !place.reviews.isEmpty {
+                                    Text("\(place.reviews.count) reseñas")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.top, 8)
+                            
+                            if place.reviews.isEmpty {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "text.bubble")
+                                        .font(.largeTitle)
+                                        .foregroundColor(.gray)
+                                    Text("Aún no hay reseñas")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("Sé el primero en dejar una reseña")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 30)
+                            } else {
+                                ForEach(place.reviews) { review in
+                                    ReviewCard(review: review)
+                                }
+                            }
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        // Botones de acción
+                        VStack(spacing: 12) {
+                            // Botón para guardar el lugar si no está guardado
+                            if !isPlaceSaved {
+                                Button(action: savePlace) {
+                                    HStack {
+                                        Image(systemName: "star.circle.fill")
+                                            .foregroundColor(.orange)
+                                        
+                                        Text("Guardar este lugar")
+                                            .font(.body)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.orange)
+                                    .cornerRadius(12)
+                                }
+                            }
+                            
+                            Button(action: openInMaps) {
+                                HStack {
+                                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                        .foregroundColor(.blue)
+                                    
+                                    Text("Cómo llegar")
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: shareLocation) {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .foregroundColor(.green)
+                                    
+                                    Text("Compartir ubicación")
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(12)
+                            }
+                        }
+                        .padding(.bottom, 20)
                     }
+                    .padding()
                 }
             }
-            .padding()
+            .navigationBarHidden(true)
         }
-        .edgesIgnoringSafeArea(.top)
+        .sheet(isPresented: $showingAddReview) {
+            AddReviewView(place: $place, onSave: { review in
+                place.reviews.append(review)
+                appDataManager.updatePlace(place)
+            })
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(selectedImage: $selectedImage) { image in
+                // En una app real, aquí guardarías la imagen en el storage
+                // Por ahora solo agregamos un placeholder
+                place.photos.append("photo_\(UUID().uuidString)")
+                appDataManager.updatePlace(place)
+            }
+        }
+        .alert("Lugar Guardado", isPresented: $showingSaveConfirmation) {
+            Button("OK") { }
+        } message: {
+            Text("'\(place.name)' ha sido guardado en tus lugares favoritos")
+        }
     }
     
     // MARK: - Métodos
+    
+    private func savePlace() {
+        // Guardar el lugar en favoritos
+        if !isPlaceSaved {
+            appDataManager.favoritePlaces.append(place)
+            showingSaveConfirmation = true
+        }
+    }
     
     private func openInMaps() {
         let coordinate = CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
@@ -872,4 +1290,359 @@ struct EmergencyLocation: Identifiable {
     let type: String
     let latitude: Double
     let longitude: Double
+}
+
+// MARK: - Vista para Guardar Nueva Ubicación
+struct SaveLocationView: View {
+    @Environment(\.dismiss) var dismiss
+    let coordinate: CLLocationCoordinate2D
+    let onSave: (String, String) -> Void
+    
+    @State private var locationName = ""
+    @State private var locationDescription = ""
+    @FocusState private var isNameFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Información del Lugar")) {
+                    TextField("Nombre del lugar", text: $locationName)
+                        .focused($isNameFocused)
+                    
+                    TextField("Descripción (opcional)", text: $locationDescription)
+                }
+                
+                Section(header: Text("Coordenadas")) {
+                    HStack {
+                        Text("Latitud:")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(String(format: "%.6f", coordinate.latitude))
+                    }
+                    
+                    HStack {
+                        Text("Longitud:")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(String(format: "%.6f", coordinate.longitude))
+                    }
+                }
+                
+                Section {
+                    Button(action: {
+                        onSave(locationName, locationDescription)
+                        dismiss()
+                    }) {
+                        HStack {
+                            Spacer()
+                            Text("Guardar Ubicación")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                    .disabled(locationName.isEmpty)
+                }
+            }
+            .navigationTitle("Nueva Ubicación")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancelar") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                isNameFocused = true
+            }
+        }
+    }
+}
+
+// MARK: - Vista para Agregar Reseña
+struct AddReviewView: View {
+    @Binding var place: Place
+    let onSave: (Review) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var userName = "Usuario Actual"
+    @State private var rating: Double = 3.0
+    @State private var comment = ""
+    @FocusState private var isCommentFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Tu Calificación")) {
+                    VStack(spacing: 10) {
+                        HStack {
+                            ForEach(1..<6) { index in
+                                Button(action: {
+                                    rating = Double(index)
+                                }) {
+                                    Image(systemName: index <= Int(rating) ? "star.fill" : "star")
+                                        .font(.title)
+                                        .foregroundColor(index <= Int(rating) ? .orange : .gray)
+                                }
+                            }
+                        }
+                        
+                        Text("\(Int(rating)) de 5 estrellas")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                
+                Section(header: Text("Tu Reseña")) {
+                    TextEditor(text: $comment)
+                        .frame(height: 150)
+                        .focused($isCommentFocused)
+                    
+                    Text("\(comment.count) caracteres")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                
+                Section {
+                    Button(action: {
+                        let newReview = Review(
+                            userName: userName,
+                            rating: rating,
+                            comment: comment.isEmpty ? "Sin comentarios" : comment,
+                            date: Date()
+                        )
+                        onSave(newReview)
+                        dismiss()
+                    }) {
+                        HStack {
+                            Spacer()
+                            Text("Publicar Reseña")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Nueva Reseña")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancelar") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                isCommentFocused = true
+            }
+        }
+    }
+}
+
+// MARK: - Tarjeta de Reseña
+struct ReviewCard: View {
+    let review: Review
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                // Avatar del usuario
+                Circle()
+                    .fill(Color.blue.opacity(0.3))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Text(String(review.userName.prefix(1)))
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(review.userName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    HStack(spacing: 2) {
+                        ForEach(0..<5) { index in
+                            Image(systemName: index < Int(review.rating) ? "star.fill" : "star")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                Text(formatDate(review.date))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(review.comment)
+                .font(.body)
+                .foregroundColor(.primary)
+                .lineLimit(nil)
+        }
+        .padding()
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(12)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Image Picker
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var selectedImage: UIImage?
+    let onImagePicked: (UIImage) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.selectedImage = image
+                parent.onImagePicked(image)
+            }
+            parent.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
+// MARK: - Vista de Opciones Rápidas para Ubicación
+/*
+ Vista que se muestra al hacer long press en el mapa
+ Permite guardar la ubicación o verla directamente
+*/
+struct QuickLocationOptionsView: View {
+    @State var place: Place
+    let onSaveAndView: (Place) -> Void
+    let onViewOnly: (Place) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var locationName = ""
+    @State private var locationDescription = ""
+    @FocusState private var isNameFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header con mapa pequeño
+                ZStack {
+                    Rectangle()
+                        .fill(Color.blue.opacity(0.1))
+                        .frame(height: 120)
+                    
+                    VStack(spacing: 8) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                        
+                        Text("Nueva Ubicación")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("Lat: \(String(format: "%.4f", place.latitude)), Lng: \(String(format: "%.4f", place.longitude))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Formulario
+                Form {
+                    Section(header: Text("Información del Lugar")) {
+                        TextField("Nombre del lugar (opcional)", text: $locationName)
+                            .focused($isNameFocused)
+                        
+                        TextField("Descripción (opcional)", text: $locationDescription)
+                    }
+                    
+                    Section {
+                        // Botón para guardar y ver detalles
+                        Button(action: {
+                            var updatedPlace = place
+                            if !locationName.isEmpty {
+                                updatedPlace.name = locationName
+                            }
+                            if !locationDescription.isEmpty {
+                                updatedPlace.subtitle = locationDescription
+                            }
+                            onSaveAndView(updatedPlace)
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                    .foregroundColor(.blue)
+                                Text("Guardar y Agregar Reseña/Foto")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                        }
+                        
+                        // Botón para solo ver sin guardar
+                        Button(action: {
+                            var updatedPlace = place
+                            if !locationName.isEmpty {
+                                updatedPlace.name = locationName
+                            }
+                            if !locationDescription.isEmpty {
+                                updatedPlace.subtitle = locationDescription
+                            }
+                            onViewOnly(updatedPlace)
+                        }) {
+                            HStack {
+                                Image(systemName: "eye")
+                                    .foregroundColor(.green)
+                                Text("Ver Detalles (sin guardar)")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                        }
+                    }
+                    
+                    Section {
+                        Text("Mantén presionado sobre cualquier parte del mapa para seleccionar una ubicación y agregar reseñas o fotos.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Seleccionar Ubicación")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancelar") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
 }

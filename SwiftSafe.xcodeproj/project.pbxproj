@@ -253,6 +253,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Necesitamos acceso a tu cámara para tomar fotos de lugares";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Necesitamos tu ubicación para mostrarte lugares cercanos y ayudarte a navegar";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Necesitamos tu ubicación para mostrarte lugares cercanos y ayudarte a navegar";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Necesitamos acceso a tus fotos para que puedas compartir imágenes de lugares";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +288,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Necesitamos acceso a tu cámara para tomar fotos de lugares";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Necesitamos tu ubicación para mostrarte lugares cercanos y ayudarte a navegar";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Necesitamos tu ubicación para mostrarte lugares cercanos y ayudarte a navegar";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Necesitamos acceso a tus fotos para que puedas compartir imágenes de lugares";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

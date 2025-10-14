@@ -119,10 +119,44 @@ struct User: Identifiable {
 class AppDataManager: ObservableObject {
     // Lista de lugares favoritos para mostrar en el mapa
     @Published var favoritePlaces: [Place] = [
-        Place(name: "Restaurante", subtitle: "Comida tradicional mexicana", latitude: 20.6737, longitude: -103.3444),
-        Place(name: "Hospital Civil", subtitle: "Hospital principal", latitude: 20.6756, longitude: -103.3467),
-        Place(name: "Catedral de Guadalajara", subtitle: "Lugar histórico", latitude: 20.6778, longitude: -103.3474)
+        Place(name: "Restaurante", subtitle: "Comida tradicional mexicana", latitude: 20.6737, longitude: -103.3444, photos: [], reviews: [
+            Review(userName: "Juan Pérez", rating: 4.5, comment: "Excelente comida y buen servicio", date: Date())
+        ]),
+        Place(name: "Hospital Civil", subtitle: "Hospital principal", latitude: 20.6756, longitude: -103.3467, photos: [], reviews: []),
+        Place(name: "Catedral de Guadalajara", subtitle: "Lugar histórico", latitude: 20.6778, longitude: -103.3474, photos: [], reviews: [
+            Review(userName: "María García", rating: 5.0, comment: "Hermosa arquitectura, un lugar imperdible", date: Date()),
+            Review(userName: "Carlos López", rating: 4.0, comment: "Muy bonito lugar, recomendado para turistas", date: Date())
+        ])
     ]
+    
+    // Método para actualizar un lugar
+    func updatePlace(_ place: Place) {
+        if let index = favoritePlaces.firstIndex(where: { $0.id == place.id }) {
+            favoritePlaces[index] = place
+        }
+    }
+    
+    // Lista de lugares de interés cercanos (POI - Points of Interest)
+    // Estos son lugares que aparecen en el mapa pero no están guardados por el usuario
+    @Published var nearbyPlaces: [Place] = [
+        Place(name: "Parque Agua Azul", subtitle: "Parque público con áreas verdes", latitude: 20.6690, longitude: -103.3426, photos: [], reviews: []),
+        Place(name: "Teatro Degollado", subtitle: "Teatro neoclásico histórico", latitude: 20.6753, longitude: -103.3467, photos: [], reviews: []),
+        Place(name: "Mercado Libertad", subtitle: "Mercado tradicional", latitude: 20.6767, longitude: -103.3443, photos: [], reviews: []),
+        Place(name: "Plaza de Armas", subtitle: "Plaza central de Guadalajara", latitude: 20.6763, longitude: -103.3476, photos: [], reviews: []),
+        Place(name: "Hospicio Cabañas", subtitle: "Patrimonio de la UNESCO", latitude: 20.6783, longitude: -103.3437, photos: [], reviews: []),
+        Place(name: "Parque Revolución", subtitle: "Parque urbano con juegos", latitude: 20.6810, longitude: -103.3510, photos: [], reviews: []),
+        Place(name: "Biblioteca Iberoamericana", subtitle: "Biblioteca pública", latitude: 20.6720, longitude: -103.3390, photos: [], reviews: []),
+        Place(name: "Museo Regional de Guadalajara", subtitle: "Museo de historia", latitude: 20.6745, longitude: -103.3455, photos: [], reviews: []),
+        Place(name: "Rotonda de los Jaliscienses Ilustres", subtitle: "Monumento conmemorativo", latitude: 20.6755, longitude: -103.3480, photos: [], reviews: []),
+        Place(name: "Plaza Tapatía", subtitle: "Plaza comercial y recreativa", latitude: 20.6770, longitude: -103.3450, photos: [], reviews: [])
+    ]
+    
+    // Obtener todos los lugares (guardados + cercanos) sin duplicados
+    var allPlaces: [Place] {
+        let savedIds = Set(favoritePlaces.map { $0.id })
+        let nearby = nearbyPlaces.filter { !savedIds.contains($0.id) }
+        return favoritePlaces + nearby
+    }
     
     // Lista de elementos para la vista principal
     @Published var homeItems: [HomeItem] = [
@@ -139,10 +173,28 @@ class AppDataManager: ObservableObject {
 */
 struct Place: Identifiable {
     let id = UUID()
-    let name: String
-    let subtitle: String
+    var name: String
+    var subtitle: String
     let latitude: Double
     let longitude: Double
+    var photos: [String] = [] // Nombres de imágenes o URLs
+    var reviews: [Review] = []
+    var rating: Double {
+        guard !reviews.isEmpty else { return 0.0 }
+        return reviews.map { $0.rating }.reduce(0, +) / Double(reviews.count)
+    }
+}
+
+// MARK: - Modelo de Reseña
+/*
+ Estructura que representa una reseña de un lugar
+*/
+struct Review: Identifiable {
+    let id = UUID()
+    let userName: String
+    let rating: Double // De 1 a 5
+    let comment: String
+    let date: Date
 }
 
 // MARK: - Modelo de Elemento del Inicio
