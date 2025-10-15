@@ -228,7 +228,7 @@ struct MapView: View {
                     HStack {
                         Spacer()
                         
-                        VStack(spacing: 12) {
+                        VStack(spacing: 65) {
                             // Botón de opciones del mapa
                             Button(action: { showingMapOptions.toggle() }) {
                                 Image(systemName: "map")
@@ -256,6 +256,7 @@ struct MapView: View {
                                 withAnimation {
                                     showNearbyPlaces.toggle()
                                 }
+                                
                             }) {
                                 Image(systemName: showNearbyPlaces ? "eye.fill" : "eye.slash.fill")
                                     .font(.title2)
@@ -274,13 +275,10 @@ struct MapView: View {
                     HStack {
                         // Botón para centrar en ubicación del usuario
                         Button(action: centerOnUserLocation) {
-                            Image(systemName: "location.fill")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                                .padding()
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
+                            Image("marcador")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 120, height: 120)
                         }
                         .padding(.leading)
                         

@@ -483,13 +483,13 @@ struct EditProfileView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                /*ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Guardar") {
                         // Guardar todos los cambios
                         dismiss()
                     }
                     .fontWeight(.bold)
-                }
+                }*/
             }
         }
         .onAppear {
@@ -597,13 +597,13 @@ struct NotificationsView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                /*ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Guardar") {
                         // Guardar todos los cambios
                         dismiss()
                     }
                     .fontWeight(.bold)
-                }
+                }*/
             }
         }
     }
@@ -695,7 +695,7 @@ struct AboutView: View {
                             
                             HStack(spacing: 15) {
                                 TechBadge(name: "Pedro Rafael Mendoza Ruiz", color: .orange)
-                                TechBadge(name: "Laura Lizbet Castro Avila", color: .red)
+                                TechBadge(name: "Laura Lizbeth Castro Avila", color: .red)
                             }
                         }
                     }
