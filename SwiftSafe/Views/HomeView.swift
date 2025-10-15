@@ -14,9 +14,9 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Próximos eventos")
                             .font(.title2)
                             .fontWeight(.bold)
@@ -131,9 +131,9 @@ struct HomeView: View {
                         .padding(.horizontal)
                     }
                     
-                    Spacer(minLength: 100)
+                    Spacer(minLength: 80)
                 }
-                .padding(.top)
+                .padding(.top, 8)
             }
             .navigationTitle("")
             .navigationBarHidden(true)
@@ -189,70 +189,111 @@ struct ChatGroupsView: View {
     @Binding var showingFilterSheet: Bool
     @Binding var selectedFilter: String
     
-    @State private var chatGroups = [
-        ChatGroup(name: "Social Feed", count: 0, image: "", color: Color.green),
-        ChatGroup(name: "Estados Unidos", count: 0, image: "", color: Color.red),
-        ChatGroup(name: "Mexico", count: 0, image: "", color: Color.blue)
+    // Países
+    @State private var paisesChats = [
+        ChatGroup(name: "México", count: 0, image: "🇲🇽", color: Color.green),
+        ChatGroup(name: "Estados Unidos", count: 0, image: "🇺🇸", color: Color.blue),
+        ChatGroup(name: "Canadá", count: 0, image: "🇨🇦", color: Color.red),
+        ChatGroup(name: "Japón", count: 0, image: "🇯🇵", color: Color.red),
+        ChatGroup(name: "Brasil", count: 0, image: "🇧🇷", color: Color.green),
+        ChatGroup(name: "Ecuador", count: 0, image: "🇪🇨", color: Color.yellow)
+    ]
+    
+    // Ciudades
+    @State private var ciudadesChats = [
+        ChatGroup(name: "Guadalajara", count: 0, image: "🏛️", color: Color.blue),
+        ChatGroup(name: "Monterrey", count: 0, image: "🏔️", color: Color.orange),
+        ChatGroup(name: "Ciudad de México", count: 0, image: "🏙️", color: Color.purple)
+    ]
+    
+    // Partidos
+    @State private var partidosChats = [
+        ChatGroup(name: "México vs Estados Unidos", count: 0, image: "⚽", color: Color.green),
+        ChatGroup(name: "Canadá vs Japón", count: 0, image: "⚽", color: Color.red),
+        ChatGroup(name: "Brasil vs Ecuador", count: 0, image: "⚽", color: Color.yellow)
+    ]
+    
+    // Todos los chats (predeterminado)
+    @State private var todosChats = [
+        ChatGroup(name: "Social Feed", count: 0, image: "💬", color: Color.green),
+        ChatGroup(name: "Estados Unidos", count: 0, image: "🇺🇸", color: Color.red),
+        ChatGroup(name: "Mexico", count: 0, image: "🇲🇽", color: Color.blue)
     ]
     
     var filteredChats: [ChatGroup] {
-        return chatGroups
+        switch selectedFilter {
+        case "Paises":
+            return paisesChats
+        case "Cede\n(ciudad)":
+            return ciudadesChats
+        case "Fase":
+            return partidosChats
+        default:
+            return todosChats
+        }
     }
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.title3)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Chat grupal")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Color.clear
-                        .frame(width: 44)
-                }
-                .padding()
-                
-                Button(action: {
-                    showingFilterSheet = true
-                }) {
-                    HStack {
-                        Text("Filtros")
-                            .foregroundColor(.primary)
+        ZStack(alignment: .top) {
+            NavigationView {
+                GeometryReader { geometry in
+                    VStack {
+                        HStack {
+                            Button(action: { dismiss() }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.title3)
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Chat grupal")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Color.clear
+                                .frame(width: 44)
+                        }
                         
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 16)
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(20)
-                }
-                .padding(.bottom)
-                
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(filteredChats) { chat in
-                            ChatGroupRow(chatGroup: chat)
+                        Button(action: {
+                            showingFilterSheet = true
+                        }) {
+                            HStack {
+                                Text(selectedFilter == "Cede\n(ciudad)" ? "Filtros: Ciudades" : "Filtros: \(selectedFilter.replacingOccurrences(of: "Todos los chats", with: "Todos"))")
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(20)
+                        }
+                        .padding(.bottom, 4)
+                        
+                        ScrollView {
+                            VStack(spacing: 12) {
+                                ForEach(filteredChats) { chat in
+                                    NavigationLink(destination: ChatDetailView(chatGroup: chat)) {
+                                        ChatGroupRow(chatGroup: chat)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 4)
                         }
                     }
-                    .padding()
+                    .edgesIgnoringSafeArea(.top)
                 }
-                
-                Spacer()
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showingFilterSheet) {
-                FilterSheetView(selectedFilter: $selectedFilter)
+                .navigationBarHidden(true)
+                .sheet(isPresented: $showingFilterSheet) {
+                    FilterSheetView(selectedFilter: $selectedFilter)
+                }
             }
         }
     }
@@ -288,12 +329,17 @@ struct FilterSheetView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var selectedFilter: String
     
-    let filterOptions = ["Todos los chats", "Paises", "Cede\n(ciudad)", "Fase"]
+    let filterOptions = [
+        ("Todos los chats", "Todos"),
+        ("Paises", "Países"),
+        ("Cede\n(ciudad)", "Ciudades"),
+        ("Fase", "Partidos")
+    ]
     
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Filtro")
+                Text("Filtros")
                     .font(.headline)
                     .padding()
                 
@@ -301,20 +347,33 @@ struct FilterSheetView: View {
             }
             
             VStack(spacing: 12) {
-                ForEach(filterOptions, id: \.self) { option in
+                ForEach(filterOptions, id: \.0) { option in
                     Button(action: {
-                        selectedFilter = option
+                        selectedFilter = option.0
                         dismiss()
                     }) {
-                        Text(option)
-                            .font(.body)
-                            .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.white)
-                            )
+                        HStack {
+                            Text(option.1)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            if selectedFilter == option.0 {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color(red: 0.0, green: 0.5, blue: 0.4))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(selectedFilter == option.0 ? Color(red: 0.0, green: 0.5, blue: 0.4).opacity(0.1) : Color.white)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(selectedFilter == option.0 ? Color(red: 0.0, green: 0.5, blue: 0.4) : Color.clear, lineWidth: 2)
+                        )
                     }
                 }
             }
@@ -325,6 +384,483 @@ struct FilterSheetView: View {
         }
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Vista de Chat Detallado
+struct ChatDetailView: View {
+    @Environment(\.dismiss) var dismiss
+    let chatGroup: ChatGroup
+    
+    @State private var messageText = ""
+    @State private var messages: [ChatMessage] = []
+    
+    var body: some View {
+        // Si es Social Feed, mostrar vista de feed
+        if chatGroup.name == "Social Feed" {
+            SocialFeedView()
+        } else {
+            // Vista de chat normal para otros grupos
+            ChatMessagesView(
+                chatGroup: chatGroup,
+                messageText: $messageText,
+                messages: $messages
+            )
+        }
+    }
+}
+
+// MARK: - Vista de Social Feed
+struct SocialFeedView: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var posts: [SocialPost] = [
+        SocialPost(
+            userName: "Hablemos en el grupo de México",
+            timeAgo: "hace 8 horas",
+            content: "Llegando al estadio Akron",
+            likes: 25,
+            comments: 5,
+            hasImage: true,
+            imageName: "Estadio"
+        ),
+        SocialPost(
+            userName: "Desde en el grupo de Colombia",
+            timeAgo: "hace 10 horas",
+            content: "Esperando el partido con ansias",
+            likes: 0,
+            comments: 18,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Hablemos en el grupo de Brasil",
+            timeAgo: "hace 1 día",
+            content: "La afición brasileña está lista ��⚽",
+            likes: 45,
+            comments: 12,
+            hasImage: false,
+            imageName: nil
+        )
+    ]
+    
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.primary)
+                            .font(.title3)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Social Feed")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Color.clear
+                        .frame(width: 44)
+                }
+                .padding(.horizontal)
+                .padding(.top, geometry.safeAreaInsets.top > 0 ? geometry.safeAreaInsets.top + 4 : 8)
+                .padding(.bottom, 4)
+                .background(Color(UIColor.systemBackground))
+                
+                Divider()
+                
+                // Posts Feed
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(posts) { post in
+                            SocialPostCard(post: post)
+                            
+                            Divider()
+                                .padding(.vertical, 1)
+                        }
+                    }
+                }
+            }
+            .edgesIgnoringSafeArea(.top)
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Tarjeta de Post Social
+struct SocialPostCard: View {
+    let post: SocialPost
+    @State private var isLiked = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header del post
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color(red: 0.0, green: 0.5, blue: 0.4).opacity(0.3))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .foregroundColor(Color(red: 0.0, green: 0.5, blue: 0.4))
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(post.userName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(post.timeAgo)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: {}) {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.primary)
+                        .rotationEffect(.degrees(90))
+                }
+            }
+            .padding(.horizontal)
+            
+            // Contenido del post
+            Text(post.content)
+                .font(.body)
+                .foregroundColor(.primary)
+                .padding(.horizontal)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            // Imagen del post (si tiene)
+            if post.hasImage {
+                ZStack(alignment: .bottomTrailing) {
+                    // Imagen de fondo del estadio
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.5, green: 0.7, blue: 0.6),
+                            Color(red: 0.3, green: 0.5, blue: 0.4)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 220)
+                    .overlay(
+                        VStack {
+                            Spacer()
+                            // Representación del campo/estadio
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.green.opacity(0.6))
+                                .frame(height: 100)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+                        .padding(.bottom, 40)
+                    )
+                    
+                    // Etiqueta del estadio
+                    if let imageName = post.imageName {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.caption)
+                            Text(imageName)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white.opacity(0.95))
+                        )
+                        .padding(12)
+                    }
+                }
+            }
+            
+            // Acciones (like, comentarios)
+            HStack(spacing: 24) {
+                Button(action: {
+                    isLiked.toggle()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: isLiked ? "heart.fill" : "heart")
+                            .foregroundColor(isLiked ? .red : .primary)
+                            .font(.system(size: 18))
+                        Text("\(post.likes + (isLiked ? 1 : 0)) me gusta")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Button(action: {}) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.right")
+                            .foregroundColor(.primary)
+                            .font(.system(size: 18))
+                        Text("\(post.comments) comentarios")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 2)
+        }
+        .background(Color(UIColor.systemBackground))
+    }
+}
+
+// MARK: - Modelo de Post Social
+struct SocialPost: Identifiable {
+    let id = UUID()
+    let userName: String
+    let timeAgo: String
+    let content: String
+    let likes: Int
+    let comments: Int
+    let hasImage: Bool
+    let imageName: String?
+}
+
+// MARK: - Vista de Chat con Mensajes
+struct ChatMessagesView: View {
+    @Environment(\.dismiss) var dismiss
+    let chatGroup: ChatGroup
+    @Binding var messageText: String
+    @Binding var messages: [ChatMessage]
+    
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.primary)
+                            .font(.title3)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        if chatGroup.name.contains("vs") {
+                            // Para partidos, mostrar banderas
+                            let teams = chatGroup.name.components(separatedBy: " vs ")
+                            if teams.count == 2 {
+                                Text(getFlagForCountry(teams[0].trimmingCharacters(in: .whitespaces)))
+                                    .font(.title3)
+                                Text(getFlagForCountry(teams[1].trimmingCharacters(in: .whitespaces)))
+                                    .font(.title3)
+                            }
+                        } else {
+                            // Para otros chats, mostrar el emoji correspondiente
+                            Text(chatGroup.image)
+                                .font(.title2)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(chatGroup.name)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 16) {
+                        Button(action: {}) {
+                            Image(systemName: "phone.fill")
+                                .foregroundColor(.primary)
+                        }
+                        
+                        Button(action: {}) {
+                            Image(systemName: "video.fill")
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, geometry.safeAreaInsets.top > 0 ? geometry.safeAreaInsets.top : 4)
+                .padding(.bottom, 4)
+                .background(Color(UIColor.systemBackground))
+                
+                Divider()
+                
+                // Messages Area
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Header del chat con fecha
+                        Text(getCurrentDate())
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        
+                        // Mensajes predefinidos según el tipo de chat
+                        ForEach(getInitialMessages(for: chatGroup.name), id: \.id) { message in
+                            MessageBubble(message: message)
+                        }
+                        
+                        // Mensajes del usuario
+                        ForEach(messages) { message in
+                            MessageBubble(message: message)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                
+                // Input Area
+                HStack(spacing: 12) {
+                    Button(action: {}) {
+                        Image(systemName: "face.smiling")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    TextField("Mensaje...", text: $messageText)
+                        .padding(10)
+                        .background(Color(UIColor.systemGray6))
+                        .cornerRadius(20)
+                    
+                    Button(action: {}) {
+                        Image(systemName: "mic.fill")
+                            .font(.title3)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Button(action: {}) {
+                        Image(systemName: "paperclip")
+                            .font(.title3)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Button(action: {
+                        sendMessage()
+                    }) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(messageText.isEmpty ? .gray : Color(red: 0.0, green: 0.5, blue: 0.4))
+                    }
+                    .disabled(messageText.isEmpty)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(UIColor.systemBackground))
+            }
+            .edgesIgnoringSafeArea(.top)
+        }
+        .navigationBarHidden(true)
+    }
+    
+    func sendMessage() {
+        guard !messageText.isEmpty else { return }
+        
+        let newMessage = ChatMessage(
+            text: messageText,
+            isFromCurrentUser: true,
+            timestamp: Date()
+        )
+        messages.append(newMessage)
+        messageText = ""
+    }
+    
+    func getInitialMessages(for chatName: String) -> [ChatMessage] {
+        if chatName.contains("vs") {
+            // Para partidos
+            return [
+                ChatMessage(text: "Welcome to the World Cup", isFromCurrentUser: false, timestamp: Date()),
+                ChatMessage(text: "Hola", isFromCurrentUser: true, timestamp: Date()),
+                ChatMessage(text: "This match will be awesome!", isFromCurrentUser: false, timestamp: Date()),
+                ChatMessage(text: "Vamos Mexico!!", isFromCurrentUser: true, timestamp: Date())
+            ]
+        } else {
+            // Para países o ciudades
+            return [
+                ChatMessage(text: "Welcome to the World Cup", isFromCurrentUser: false, timestamp: Date()),
+                ChatMessage(text: "Hola", isFromCurrentUser: true, timestamp: Date()),
+                ChatMessage(text: "This match will be awesome!", isFromCurrentUser: false, timestamp: Date())
+            ]
+        }
+    }
+    
+    func getFlagForCountry(_ country: String) -> String {
+        switch country.lowercased() {
+        case "méxico", "mexico": return "🇲🇽"
+        case "estados unidos": return "🇺🇸"
+        case "canadá", "canada": return "🇨🇦"
+        case "japón", "japon": return "🇯🇵"
+        case "brasil": return "🇧🇷"
+        case "ecuador": return "🇪🇨"
+        default: return "⚽"
+        }
+    }
+    
+    func getCurrentDate() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "dd 'de' MMMM, yyyy, h:mm a"
+        return formatter.string(from: Date())
+    }
+}
+
+// MARK: - Mensaje de Chat
+struct ChatMessage: Identifiable {
+    let id = UUID()
+    let text: String
+    let isFromCurrentUser: Bool
+    let timestamp: Date
+    var hasImage: Bool = false
+}
+
+// MARK: - Burbuja de Mensaje
+struct MessageBubble: View {
+    let message: ChatMessage
+    
+    var body: some View {
+        HStack {
+            if message.isFromCurrentUser {
+                Spacer()
+            }
+            
+            VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 4) {
+                if message.hasImage {
+                    // Mensaje con imagen (para Social Feed)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(message.text)
+                            .padding(12)
+                            .background(Color(UIColor.systemGray5))
+                            .foregroundColor(.primary)
+                            .cornerRadius(16)
+                        
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(UIColor.systemGray4))
+                            .frame(height: 150)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.gray)
+                            )
+                    }
+                    .frame(maxWidth: 250)
+                } else {
+                    Text(message.text)
+                        .padding(12)
+                        .background(message.isFromCurrentUser ? Color(red: 0.0, green: 0.5, blue: 0.4) : Color(UIColor.systemGray5))
+                        .foregroundColor(message.isFromCurrentUser ? .white : .primary)
+                        .cornerRadius(16)
+                        .frame(maxWidth: 250, alignment: message.isFromCurrentUser ? .trailing : .leading)
+                }
+            }
+            
+            if !message.isFromCurrentUser {
+                Spacer()
+            }
+        }
     }
 }
 
