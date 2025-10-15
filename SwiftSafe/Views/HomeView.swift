@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var selectedFilter = "Todos los chats"
     @State private var showingEventDetail = false
     @State private var selectedEventIndex = 0
+    @State private var showingEmergencyOptions = false
     
     var body: some View {
         NavigationView {
@@ -105,7 +106,9 @@ struct HomeView: View {
                         )
                     }
                     
-                    NavigationLink(destination: MapView().environmentObject(appDataManager)) {
+                    Button(action: {
+                        showingEmergencyOptions = true
+                    }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Alertas y")
@@ -129,6 +132,9 @@ struct HomeView: View {
                         .background(Color(UIColor.systemGray5))
                         .cornerRadius(15)
                         .padding(.horizontal)
+                    }
+                    .sheet(isPresented: $showingEmergencyOptions) {
+                        EmergencyOptionsView()
                     }
                     
                     Spacer(minLength: 80)
@@ -216,8 +222,18 @@ struct ChatGroupsView: View {
     // Todos los chats (predeterminado)
     @State private var todosChats = [
         ChatGroup(name: "Social Feed", count: 0, image: "💬", color: Color.green),
-        ChatGroup(name: "Estados Unidos", count: 0, image: "🇺🇸", color: Color.red),
-        ChatGroup(name: "Mexico", count: 0, image: "🇲🇽", color: Color.blue)
+        ChatGroup(name: "México", count: 0, image: "🇲🇽", color: Color.green),
+        ChatGroup(name: "Estados Unidos", count: 0, image: "🇺🇸", color: Color.blue),
+        ChatGroup(name: "Canadá", count: 0, image: "🇨🇦", color: Color.red),
+        ChatGroup(name: "Japón", count: 0, image: "🇯🇵", color: Color.red),
+        ChatGroup(name: "Brasil", count: 0, image: "🇧🇷", color: Color.green),
+        ChatGroup(name: "Ecuador", count: 0, image: "🇪🇨", color: Color.yellow),
+        ChatGroup(name: "Guadalajara", count: 0, image: "🏛️", color: Color.blue),
+        ChatGroup(name: "Monterrey", count: 0, image: "🏔️", color: Color.orange),
+        ChatGroup(name: "Ciudad de México", count: 0, image: "�️", color: Color.purple),
+        ChatGroup(name: "México vs Estados Unidos", count: 0, image: "⚽", color: Color.green),
+        ChatGroup(name: "Canadá vs Japón", count: 0, image: "⚽", color: Color.red),
+        ChatGroup(name: "Brasil vs Ecuador", count: 0, image: "⚽", color: Color.yellow)
     ]
     
     var filteredChats: [ChatGroup] {
@@ -332,8 +348,8 @@ struct FilterSheetView: View {
     let filterOptions = [
         ("Todos los chats", "Todos"),
         ("Paises", "Países"),
-        ("Cede\n(ciudad)", "Ciudades"),
-        ("Fase", "Partidos")
+        ("Cede", "Cede\n(ciudad)"),
+        ("Fase", "Fase\n(Partidos)")
     ]
     
     var body: some View {
@@ -415,7 +431,7 @@ struct SocialFeedView: View {
     @Environment(\.dismiss) var dismiss
     @State private var posts: [SocialPost] = [
         SocialPost(
-            userName: "Hablemos en el grupo de México",
+            userName: "Hablando en el grupo de México",
             timeAgo: "hace 8 horas",
             content: "Llegando al estadio Akron",
             likes: 25,
@@ -426,65 +442,98 @@ struct SocialFeedView: View {
         SocialPost(
             userName: "Desde en el grupo de Colombia",
             timeAgo: "hace 10 horas",
-            content: "Esperando el partido con ansias",
+            content: "",
             likes: 0,
             comments: 18,
             hasImage: false,
             imageName: nil
         ),
         SocialPost(
-            userName: "Hablemos en el grupo de Brasil",
-            timeAgo: "hace 1 día",
-            content: "La afición brasileña está lista ��⚽",
+            userName: "Hablando en el grupo de Brasil",
+            timeAgo: "hace 12 horas",
+            content: "La afición brasileña está lista 🎉⚽",
             likes: 45,
             comments: 12,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Hablando en el grupo de Estados Unidos",
+            timeAgo: "hace 1 día",
+            content: "¡Primer partido del Mundial! 🇺🇸",
+            likes: 89,
+            comments: 24,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Desde en el grupo de Canadá",
+            timeAgo: "hace 1 día",
+            content: "Toronto está listo para recibir a los equipos",
+            likes: 32,
+            comments: 7,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Hablando en el grupo de Japón",
+            timeAgo: "hace 2 días",
+            content: "¡Qué emoción! Primera vez en Norteamérica ⚽🇯🇵",
+            likes: 56,
+            comments: 15,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Desde en el grupo de Ecuador",
+            timeAgo: "hace 2 días",
+            content: "La selección ecuatoriana viene con todo",
+            likes: 41,
+            comments: 9,
             hasImage: false,
             imageName: nil
         )
     ]
     
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.primary)
-                            .font(.title3)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Social Feed")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Color.clear
-                        .frame(width: 44)
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.primary)
+                        .font(.title3)
                 }
-                .padding(.horizontal)
-                .padding(.top, geometry.safeAreaInsets.top > 0 ? geometry.safeAreaInsets.top + 4 : 8)
-                .padding(.bottom, 4)
-                .background(Color(UIColor.systemBackground))
                 
-                Divider()
+                Spacer()
                 
-                // Posts Feed
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(posts) { post in
-                            SocialPostCard(post: post)
-                            
-                            Divider()
-                                .padding(.vertical, 1)
-                        }
+                Text("Social Feed")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Color.clear
+                    .frame(width: 44)
+            }
+            .padding(.horizontal)
+            .padding(.top, 50)
+            .padding(.bottom, 12)
+            .background(Color(UIColor.systemBackground))
+            
+            Divider()
+            
+            // Posts Feed
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(posts) { post in
+                        SocialPostCard(post: post)
+                        
+                        Divider()
                     }
                 }
             }
-            .edgesIgnoringSafeArea(.top)
         }
+        .edgesIgnoringSafeArea(.top)
         .navigationBarHidden(true)
     }
 }
@@ -495,15 +544,16 @@ struct SocialPostCard: View {
     @State private var isLiked = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             // Header del post
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color(red: 0.0, green: 0.5, blue: 0.4).opacity(0.3))
+                    .fill(Color.gray.opacity(0.3))
                     .frame(width: 40, height: 40)
                     .overlay(
                         Image(systemName: "person.fill")
-                            .foregroundColor(Color(red: 0.0, green: 0.5, blue: 0.4))
+                            .foregroundColor(.gray)
+                            .font(.system(size: 20))
                     )
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -523,44 +573,50 @@ struct SocialPostCard: View {
                     Image(systemName: "ellipsis")
                         .foregroundColor(.primary)
                         .rotationEffect(.degrees(90))
+                        .font(.system(size: 16))
                 }
             }
             .padding(.horizontal)
+            .padding(.top, 12)
             
             // Contenido del post
-            Text(post.content)
-                .font(.body)
-                .foregroundColor(.primary)
-                .padding(.horizontal)
-                .fixedSize(horizontal: false, vertical: true)
+            if !post.content.isEmpty {
+                Text(post.content)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             
             // Imagen del post (si tiene)
             if post.hasImage {
                 ZStack(alignment: .bottomTrailing) {
-                    // Imagen de fondo del estadio
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.5, green: 0.7, blue: 0.6),
-                            Color(red: 0.3, green: 0.5, blue: 0.4)
-                        ]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 220)
-                    .overlay(
-                        VStack {
-                            Spacer()
-                            // Representación del campo/estadio
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.green.opacity(0.6))
-                                .frame(height: 100)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                    // Intentar cargar la imagen del estadio, o usar placeholder
+                    Group {
+                        if let uiImage = UIImage(named: "estadio-akron") {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else {
+                            // Placeholder si la imagen no existe
+                            ZStack {
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(red: 0.4, green: 0.6, blue: 0.9),
+                                        Color(red: 0.3, green: 0.5, blue: 0.7)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
+                                
+                                Image(systemName: "building.2.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
                         }
-                        .padding(.bottom, 40)
-                    )
+                    }
+                    .frame(height: 300)
+                    .clipped()
                     
                     // Etiqueta del estadio
                     if let imageName = post.imageName {
@@ -612,7 +668,8 @@ struct SocialPostCard: View {
                 Spacer()
             }
             .padding(.horizontal)
-            .padding(.bottom, 2)
+            .padding(.vertical, 8)
+            .padding(.bottom, 8)
         }
         .background(Color(UIColor.systemBackground))
     }
@@ -1118,6 +1175,171 @@ struct MatchDetailCard: View {
             .background(Color(UIColor.systemBackground))
         }
         .background(Color(UIColor.systemBackground))
+    }
+}
+
+// MARK: - Vista de Opciones de Emergencia
+struct EmergencyOptionsView: View {
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var appDataManager: AppDataManager
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Spacer()
+                    
+                    Text("Alertas y emergencias")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+                
+                // Grid de opciones de emergencia
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Primera fila
+                        HStack(spacing: 15) {
+                            EmergencyOptionCard(
+                                icon: "phone.fill",
+                                title: "911",
+                                subtitle: "Emergencias",
+                                backgroundColor: Color(red: 0.7, green: 0.2, blue: 0.2),
+                                action: { callEmergency("911") }
+                            )
+                            
+                            EmergencyOptionCard(
+                                icon: "cross.case.fill",
+                                title: "065",
+                                subtitle: "Cruz Roja",
+                                backgroundColor: Color.red,
+                                action: { callEmergency("065") }
+                            )
+                        }
+                        
+                        // Segunda fila
+                        HStack(spacing: 15) {
+                            EmergencyOptionCard(
+                                icon: "heart.fill",
+                                title: "Línea de la",
+                                subtitle: "vida",
+                                backgroundColor: Color(red: 0.2, green: 0.5, blue: 0.4),
+                                action: { callEmergency("800-911-2000") }
+                            )
+                            
+                            EmergencyOptionCard(
+                                icon: "person.fill",
+                                title: "Línea de la",
+                                subtitle: "mujer",
+                                backgroundColor: Color(red: 0.4, green: 0.2, blue: 0.5),
+                                action: { callEmergency("800-108-4053") }
+                            )
+                        }
+                        
+                        // Tercera fila
+                        HStack(spacing: 15) {
+                            EmergencyOptionCard(
+                                icon: "scale.3d",
+                                title: "089",
+                                subtitle: "Denuncia anónima",
+                                backgroundColor: Color(red: 0.2, green: 0.5, blue: 0.4),
+                                action: { callEmergency("089") }
+                            )
+                            
+                            EmergencyOptionCard(
+                                icon: "hand.raised.fill",
+                                title: "PROFECO",
+                                subtitle: "",
+                                backgroundColor: Color(red: 0.2, green: 0.5, blue: 0.4),
+                                action: { callEmergency("800-468-8722") }
+                            )
+                        }
+                        
+                        // Botón de lugares de emergencia
+                        NavigationLink(destination: MapView().environmentObject(appDataManager)) {
+                            HStack {
+                                Spacer()
+                                Text("Ver lugares de emergencia")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(25)
+                        }
+                        .padding(.top, 10)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                }
+                
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+        }
+    }
+    
+    func callEmergency(_ number: String) {
+        if let url = URL(string: "tel://\(number)") {
+            UIApplication.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Tarjeta de Opción de Emergencia
+struct EmergencyOptionCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let backgroundColor: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(backgroundColor)
+                        .frame(width: 90, height: 90)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 45))
+                        .foregroundColor(.white)
+                }
+                
+                VStack(spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                    
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color(UIColor.systemGray6))
+            .cornerRadius(15)
+        }
     }
 }
 
