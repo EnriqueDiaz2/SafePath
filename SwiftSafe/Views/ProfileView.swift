@@ -12,6 +12,7 @@ struct ProfileView: View {
     // Estados para controlar la presentación de vistas
     @State private var showingEditProfile = false
     @State private var showingSettings = false
+    @State private var showingPrivacy = false
     @State private var showingNotifications = false
     @State private var showingAbout = false
     @State private var showingLogoutAlert = false
@@ -47,6 +48,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 NotificationsView()
+            }
+            .sheet(isPresented: $showingPrivacy) {
+                PrivacyView()
             }
             .sheet(isPresented: $showingAbout) {
                 AboutView()
@@ -238,7 +242,7 @@ struct ProfileView: View {
                     icon: "shield",
                     color: .blue
                 ) {
-                    // Configurar privacidad
+                    showingPrivacy.toggle()
                 }
                 
                 Divider()
@@ -417,61 +421,268 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var authManager: AuthenticationManager
     
+    @AppStorage("userName") private var userName: String = ""
+    @AppStorage("userLastName") private var userLastName: String = ""
+    @AppStorage("userBio") private var userBio: String = ""
+    @AppStorage("userPhone") private var userPhone: String = ""
+    @AppStorage("userCity") private var userCity: String = ""
+    @AppStorage("userCountry") private var userCountry: String = ""
+    @AppStorage("hasDisability") private var hasDisability: Bool = false
+    
     @State private var name: String = ""
     @State private var lastName: String = ""
     @State private var bio: String = ""
-    @State private var hasDisability: Bool = false
+    @State private var phone: String = ""
+    @State private var city: String = ""
+    @State private var country: String = ""
+    @State private var disability: Bool = false
+    @State private var showingSaveConfirmation = false
     
     var body: some View {
         NavigationView {
-            Form {
-                // MARK: - Información Personal
-                Section(header: Text("Editar Perfil").font(.headline)) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Nombre")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        TextField("Carlos Rafael", text: $name)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // MARK: - Foto de Perfil
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(hex: "B2EFC0"), Color(hex: "4CE870")],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 100, height: 100)
+                                
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.white)
+                                
+                                Circle()
+                                    .fill(Color.blue)
+                                    .frame(width: 32, height: 32)
+                                    .overlay(
+                                        Image(systemName: "camera.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.white)
+                                    )
+                                    .offset(x: 35, y: 35)
+                            }
+                            
+                            Button(action: {
+                                // Cambiar foto
+                            }) {
+                                Text("Cambiar foto de perfil")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(.vertical, 24)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(UIColor.systemBackground))
+                        
+                        // MARK: - Información Personal
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("INFORMACIÓN PERSONAL")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                ProfileTextField(
+                                    label: "Nombre",
+                                    placeholder: "Tu nombre",
+                                    text: $name
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                ProfileTextField(
+                                    label: "Apellido",
+                                    placeholder: "Tu apellido",
+                                    text: $lastName
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                ProfileTextField(
+                                    label: "Teléfono",
+                                    placeholder: "+52 33 1234 5678",
+                                    text: $phone,
+                                    keyboardType: .phonePad
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                ProfileTextField(
+                                    label: "Email",
+                                    placeholder: authManager.currentUser?.email ?? "tu@email.com",
+                                    text: .constant(authManager.currentUser?.email ?? ""),
+                                    isDisabled: true
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Ubicación
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("UBICACIÓN")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                ProfileTextField(
+                                    label: "Ciudad",
+                                    placeholder: "Guadalajara",
+                                    text: $city
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                ProfileTextField(
+                                    label: "País",
+                                    placeholder: "México",
+                                    text: $country
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Biografía
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("BIOGRAFÍA")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 8) {
+                                ZStack(alignment: .topLeading) {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(UIColor.systemBackground))
+                                        .frame(minHeight: 100)
+                                    
+                                    TextEditor(text: $bio)
+                                        .padding(8)
+                                        .frame(minHeight: 100)
+                                        .scrollContentBackground(.hidden)
+                                        .background(Color.clear)
+                                    
+                                    if bio.isEmpty {
+                                        Text("Cuéntanos sobre ti...")
+                                            .foregroundColor(Color(UIColor.placeholderText))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 16)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
+                                
+                                Text("\(bio.count)/200 caracteres")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Accesibilidad
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("ACCESIBILIDAD")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Tengo alguna discapacidad")
+                                            .font(.body)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Activar para recibir rutas accesibles")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Toggle("", isOn: $disability)
+                                        .labelsHidden()
+                                        .tint(.green)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Espaciado para el botón
+                        Color.clear.frame(height: 100)
                     }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Apellido")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        TextField("Gomez Diaz", text: $lastName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Biografía")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        TextField("Apasionado por el fútbol y los deportes en general ⚽️, ¡siempre listo para la emoción del juego!", text: $bio, axis: .vertical)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .lineLimit(3...6)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Discapacidad:")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Toggle("Solo para personas con alguna discapacidad", isOn: $hasDisability)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
-                    }
-                    
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Botón de guardar flotante
+                VStack {
                     Button(action: {
-                        // Guardar cambios
-                        dismiss()
+                        saveChanges()
                     }) {
                         Text("Guardar Cambios")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
+                            .font(.headline)
                             .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.green.opacity(0.8))
+                            )
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Confirmación de guardado
+                if showingSaveConfirmation {
+                    VStack {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.title2)
+                            
+                            Text("Perfil actualizado")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 10)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 60)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 }
             }
             .navigationTitle("Editar Perfil")
@@ -481,111 +692,732 @@ struct EditProfileView: View {
                     Button("Cancelar") {
                         dismiss()
                     }
+                    .foregroundColor(.primary)
                 }
-                
-                /*ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Guardar") {
-                        // Guardar todos los cambios
-                        dismiss()
-                    }
-                    .fontWeight(.bold)
-                }*/
             }
         }
         .onAppear {
-            // Cargar datos actuales del usuario
-            name = authManager.currentUser?.name ?? ""
+            loadUserData()
+        }
+    }
+    
+    private func loadUserData() {
+        name = userName
+        lastName = userLastName
+        bio = userBio
+        phone = userPhone
+        city = userCity
+        country = userCountry
+        disability = hasDisability
+    }
+    
+    private func saveChanges() {
+        userName = name
+        userLastName = lastName
+        userBio = bio
+        userPhone = phone
+        userCity = city
+        userCountry = country
+        hasDisability = disability
+        
+        withAnimation {
+            showingSaveConfirmation = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                showingSaveConfirmation = false
+            }
+            dismiss()
+        }
+    }
+}
+
+// MARK: - Campo de texto personalizado para perfil
+struct ProfileTextField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+    var isDisabled: Bool = false
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                TextField(placeholder, text: $text)
+                    .font(.body)
+                    .disabled(isDisabled)
+                    .foregroundColor(isDisabled ? .secondary : .primary)
+                    .keyboardType(keyboardType)
+            }
+            
+            if isDisabled {
+                Image(systemName: "lock.fill")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Vista de Privacidad y Seguridad
+struct PrivacyView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authManager: AuthenticationManager
+    
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var showCurrentPassword = false
+    @State private var showNewPassword = false
+    @State private var showConfirmPassword = false
+    @State private var showingSaveConfirmation = false
+    @State private var errorMessage = ""
+    @State private var showError = false
+    
+    // Configuraciones de privacidad
+    @AppStorage("profileIsPublic") private var profileIsPublic: Bool = true
+    @AppStorage("showLocation") private var showLocation: Bool = true
+    @AppStorage("allowMessages") private var allowMessages: Bool = true
+    @AppStorage("showActivity") private var showActivity: Bool = true
+    @AppStorage("twoFactorEnabled") private var twoFactorEnabled: Bool = false
+    
+    var body: some View {
+        NavigationView {
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // MARK: - Cambiar Contraseña
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("CAMBIAR CONTRASEÑA")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                // Contraseña actual
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Contraseña actual")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        
+                                        HStack {
+                                            if showCurrentPassword {
+                                                TextField("Ingresa tu contraseña actual", text: $currentPassword)
+                                                    .font(.body)
+                                                    .autocapitalization(.none)
+                                            } else {
+                                                SecureField("Ingresa tu contraseña actual", text: $currentPassword)
+                                                    .font(.body)
+                                            }
+                                            
+                                            Button(action: {
+                                                showCurrentPassword.toggle()
+                                            }) {
+                                                Image(systemName: showCurrentPassword ? "eye.fill" : "eye.slash.fill")
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                // Nueva contraseña
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Nueva contraseña")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        
+                                        HStack {
+                                            if showNewPassword {
+                                                TextField("Mínimo 6 caracteres", text: $newPassword)
+                                                    .font(.body)
+                                                    .autocapitalization(.none)
+                                            } else {
+                                                SecureField("Mínimo 6 caracteres", text: $newPassword)
+                                                    .font(.body)
+                                            }
+                                            
+                                            Button(action: {
+                                                showNewPassword.toggle()
+                                            }) {
+                                                Image(systemName: showNewPassword ? "eye.fill" : "eye.slash.fill")
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                // Confirmar contraseña
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Confirmar contraseña")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        
+                                        HStack {
+                                            if showConfirmPassword {
+                                                TextField("Repite la nueva contraseña", text: $confirmPassword)
+                                                    .font(.body)
+                                                    .autocapitalization(.none)
+                                            } else {
+                                                SecureField("Repite la nueva contraseña", text: $confirmPassword)
+                                                    .font(.body)
+                                            }
+                                            
+                                            Button(action: {
+                                                showConfirmPassword.toggle()
+                                            }) {
+                                                Image(systemName: showConfirmPassword ? "eye.fill" : "eye.slash.fill")
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                            
+                            // Requisitos de contraseña
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("La contraseña debe tener:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                PasswordRequirement(
+                                    text: "Mínimo 6 caracteres",
+                                    isMet: newPassword.count >= 6
+                                )
+                                
+                                PasswordRequirement(
+                                    text: "Las contraseñas coinciden",
+                                    isMet: !newPassword.isEmpty && newPassword == confirmPassword
+                                )
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                            
+                            // Botón de cambiar contraseña
+                            Button(action: {
+                                changePassword()
+                            }) {
+                                Text("Cambiar Contraseña")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(isPasswordValid() ? Color.blue : Color.gray.opacity(0.5))
+                                    )
+                            }
+                            .disabled(!isPasswordValid())
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                        }
+                        
+                        // MARK: - Configuración de Privacidad
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("CONFIGURACIÓN DE PRIVACIDAD")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 32)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                PrivacyToggleRow(
+                                    title: "Perfil público",
+                                    subtitle: "Permite que otros usuarios vean tu perfil",
+                                    isOn: $profileIsPublic
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                PrivacyToggleRow(
+                                    title: "Compartir ubicación",
+                                    subtitle: "Muestra tu ubicación en el mapa",
+                                    isOn: $showLocation
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                PrivacyToggleRow(
+                                    title: "Permitir mensajes",
+                                    subtitle: "Otros usuarios pueden enviarte mensajes",
+                                    isOn: $allowMessages
+                                )
+                                
+                                Divider().padding(.leading, 20)
+                                
+                                PrivacyToggleRow(
+                                    title: "Mostrar actividad",
+                                    subtitle: "Muestra cuando estás activo",
+                                    isOn: $showActivity
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Seguridad
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("SEGURIDAD")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 32)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 0) {
+                                PrivacyToggleRow(
+                                    title: "Autenticación de dos factores",
+                                    subtitle: "Agrega una capa extra de seguridad",
+                                    isOn: $twoFactorEnabled
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Sesiones Activas
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("SESIONES ACTIVAS")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 32)
+                                .padding(.bottom, 8)
+                            
+                            VStack(spacing: 12) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "iphone")
+                                        .font(.title2)
+                                        .foregroundColor(.blue)
+                                        .frame(width: 40)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("iPhone actual")
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                        
+                                        Text("Última actividad: Ahora")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text("Activo")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.green.opacity(0.1))
+                                        .cornerRadius(6)
+                                }
+                                .padding(16)
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Espaciado para el botón
+                        Color.clear.frame(height: 100)
+                    }
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Botón de guardar flotante
+                VStack {
+                    Button(action: {
+                        savePrivacySettings()
+                    }) {
+                        Text("Guardar Cambios")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.green.opacity(0.8))
+                            )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Confirmación de guardado
+                if showingSaveConfirmation {
+                    VStack {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.title2)
+                            
+                            Text("Configuración guardada")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 10)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 60)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
+                
+                // Error
+                if showError {
+                    VStack {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                                .font(.title2)
+                            
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 10)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 60)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+            .navigationTitle("Privacidad y Seguridad")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancelar") {
+                        dismiss()
+                    }
+                    .foregroundColor(.primary)
+                }
+            }
+        }
+    }
+    
+    private func isPasswordValid() -> Bool {
+        return !currentPassword.isEmpty &&
+               !newPassword.isEmpty &&
+               !confirmPassword.isEmpty &&
+               newPassword.count >= 6 &&
+               newPassword == confirmPassword
+    }
+    
+    private func changePassword() {
+        guard isPasswordValid() else {
+            errorMessage = "Por favor completa todos los campos correctamente"
+            withAnimation {
+                showError = true
+            }
+            hideError()
+            return
+        }
+        
+        // Aquí implementarías la lógica real de cambio de contraseña
+        // Por ahora solo mostramos confirmación
+        currentPassword = ""
+        newPassword = ""
+        confirmPassword = ""
+        
+        withAnimation {
+            showingSaveConfirmation = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showingSaveConfirmation = false
+            }
+        }
+    }
+    
+    private func savePrivacySettings() {
+        withAnimation {
+            showingSaveConfirmation = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                showingSaveConfirmation = false
+            }
+            dismiss()
+        }
+    }
+    
+    private func hideError() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            withAnimation {
+                showError = false
+            }
+        }
+    }
+}
+
+// MARK: - Componente de toggle de privacidad
+struct PrivacyToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(.green)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Componente de requisito de contraseña
+struct PasswordRequirement: View {
+    let text: String
+    let isMet: Bool
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
+                .font(.caption)
+                .foregroundColor(isMet ? .green : .secondary)
+            
+            Text(text)
+                .font(.caption)
+                .foregroundColor(isMet ? .primary : .secondary)
         }
     }
 }
 
 /*
  Vista de notificaciones separada
+```
 */
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("notifNuevosMensajes") private var notifNuevosMensajes: Bool = true
+    @AppStorage("notifMenciones") private var notifMenciones: Bool = true
+    @AppStorage("notifMeGusta") private var notifMeGusta: Bool = true
+    @AppStorage("notifActualizacionesMapa") private var notifActualizacionesMapa: Bool = true
+    @AppStorage("notifAlertasZona") private var notifAlertasZona: Bool = true
+    @AppStorage("notifInicioPartidos") private var notifInicioPartidos: Bool = true
     
-    // Notificaciones - Sociales
-    @State private var notifNuevosMensajes: Bool = true
-    @State private var notifMenciones: Bool = true
-    @State private var notifMeGusta: Bool = true
-    
-    // Notificaciones - Mapa y reseñas
-    @State private var notifActualizacionesMapa: Bool = true
-    
-    // Notificaciones - Emergencias
-    @State private var notifAlertasZona: Bool = true
-    
-    // Notificaciones - Mundial
-    @State private var notifInicioPartidos: Bool = true
+    @State private var showingSaveConfirmation = false
     
     var body: some View {
         NavigationView {
-            Form {
-                // MARK: - Notificaciones
-                Section(header: Text("Notificaciones").font(.headline)) {
-                    // Sociales
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Sociales")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Header
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Notificaciones")
+                                .font(.title3)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                        }
                         
-                        Toggle("Nuevos mensajes en chats", isOn: $notifNuevosMensajes)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
+                        // MARK: - Sociales
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Sociales")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                                .padding(.bottom, 12)
+                            
+                            VStack(spacing: 0) {
+                                NotificationToggleRow(
+                                    title: "Nuevos mensajes en chats",
+                                    isOn: $notifNuevosMensajes
+                                )
+                                
+                                Divider()
+                                    .padding(.leading, 20)
+                                
+                                NotificationToggleRow(
+                                    title: "Menciones en conversaciones",
+                                    isOn: $notifMenciones
+                                )
+                                
+                                Divider()
+                                    .padding(.leading, 20)
+                                
+                                NotificationToggleRow(
+                                    title: "Me gusta en tus comentarios",
+                                    isOn: $notifMeGusta
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
                         
-                        Toggle("Menciones en conversaciones", isOn: $notifMenciones)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
+                        // MARK: - Mapa y reseñas
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Mapa y reseñas")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 12)
+                            
+                            VStack(spacing: 0) {
+                                NotificationToggleRow(
+                                    title: "Actualizaciones en puntos\ndel mapa",
+                                    isOn: $notifActualizacionesMapa
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
                         
-                        Toggle("Me gusta en tus comentarios", isOn: $notifMeGusta)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
+                        // MARK: - Emergencias
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Emergencias")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 12)
+                            
+                            VStack(spacing: 0) {
+                                NotificationToggleRow(
+                                    title: "Alertas en tu zona",
+                                    isOn: $notifAlertasZona
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // MARK: - Mundial
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Mundial")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 12)
+                            
+                            VStack(spacing: 0) {
+                                NotificationToggleRow(
+                                    title: "Inicio de partidos",
+                                    isOn: $notifInicioPartidos
+                                )
+                            }
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Espaciado para el botón
+                        Color.clear.frame(height: 100)
                     }
-                    .padding(.vertical, 4)
-                    
-                    // Mapa y reseñas
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Mapa y reseñas")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        Toggle("Actualizaciones en puntos del mapa", isOn: $notifActualizacionesMapa)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // Emergencias
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Emergencias")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        Toggle("Alertas en tu zona", isOn: $notifAlertasZona)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // Mundial
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Mundial")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        Toggle("Inicio de partidos", isOn: $notifInicioPartidos)
-                            .toggleStyle(SwitchToggleStyle(tint: Color.green))
-                    }
-                    .padding(.vertical, 4)
-                    
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Botón de guardar flotante
+                VStack {
                     Button(action: {
-                        // Guardar cambios de notificaciones
-                        dismiss()
+                        withAnimation {
+                            showingSaveConfirmation = true
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation {
+                                showingSaveConfirmation = false
+                            }
+                            dismiss()
+                        }
                     }) {
                         Text("Guardar Cambios")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
+                            .font(.headline)
                             .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.green.opacity(0.8))
+                            )
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
+                }
+                .background(Color(UIColor.systemGroupedBackground))
+                
+                // Confirmación de guardado
+                if showingSaveConfirmation {
+                    VStack {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.title2)
+                            
+                            Text("Cambios guardados")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 10)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 60)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 }
             }
             .navigationTitle("Notificaciones")
@@ -595,17 +1427,32 @@ struct NotificationsView: View {
                     Button("Cancelar") {
                         dismiss()
                     }
+                    .foregroundColor(.primary)
                 }
-                
-                /*ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Guardar") {
-                        // Guardar todos los cambios
-                        dismiss()
-                    }
-                    .fontWeight(.bold)
-                }*/
             }
         }
+    }
+}
+
+// MARK: - Componente de fila de toggle
+struct NotificationToggleRow: View {
+    let title: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.body)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(.green)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }
 

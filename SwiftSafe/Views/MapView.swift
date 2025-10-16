@@ -39,20 +39,50 @@ struct MapView: View {
     @State private var temporaryPlace: Place?
     
     // Manager de ubicación
-    @StateObject private var locationManager = LocationManager()
+    @StateObject private var locationManager = MapLocationManager()
     
     // Estado para mostrar/ocultar lugares cercanos
     @State private var showNearbyPlaces = true
     
-    // Computed property para lugares filtrados (guardados + cercanos)
+    // Estado para filtros visuales
+    @State private var showSavedPlaces = true
+    @State private var showNearbyFilter = false
+    
+    // Estado para filtro por categoría
+    @State private var selectedCategory = "Todos"
+    
+    // Estado para filtro por accesibilidad
+    @State private var filterAccessibleOnly = false
+    
+    // Computed property para lugares filtrados (guardados + cercanos + categoría + accesibilidad)
     var filteredPlaces: [Place] {
-        var places = appDataManager.favoritePlaces
+        var places: [Place] = []
+        
+        // Agregar lugares guardados si está activado
+        if showSavedPlaces {
+            places.append(contentsOf: appDataManager.favoritePlaces)
+        }
         
         // Agregar lugares cercanos si está activado
-        if showNearbyPlaces {
+        if showNearbyFilter {
             let savedIds = Set(appDataManager.favoritePlaces.map { $0.id })
             let nearby = appDataManager.nearbyPlaces.filter { !savedIds.contains($0.id) }
             places.append(contentsOf: nearby)
+        }
+        
+        // Filtrar por categoría
+        if selectedCategory != "Todos" {
+            places = places.filter { place in
+                matchesCategory(place: place, category: selectedCategory)
+            }
+        }
+        
+        // Filtrar por accesibilidad
+        if filterAccessibleOnly {
+            places = places.filter { place in
+                // Un lugar es accesible si tiene al menos una reseña que lo marque como accesible
+                place.reviews.contains(where: { $0.isAccessible })
+            }
         }
         
         // Filtrar por búsqueda
@@ -63,6 +93,27 @@ struct MapView: View {
                 place.name.localizedCaseInsensitiveContains(searchText) ||
                 place.subtitle.localizedCaseInsensitiveContains(searchText)
             }
+        }
+    }
+    
+    // Función para verificar si un lugar coincide con una categoría
+    func matchesCategory(place: Place, category: String) -> Bool {
+        let name = place.name.lowercased()
+        let subtitle = place.subtitle.lowercased()
+        
+        switch category {
+        case "Restaurantes":
+            return name.contains("restaurante") || name.contains("restaurant") || name.contains("comida") || subtitle.contains("restaurante")
+        case "Hospitales":
+            return name.contains("hospital") || name.contains("clínica") || name.contains("clinic") || subtitle.contains("salud") || name.contains("imss")
+        case "Bomberos":
+            return name.contains("bombero") || name.contains("fire") || subtitle.contains("bombero")
+        case "IMSS":
+            return name.contains("imss") || name.contains("seguro social") || subtitle.contains("imss")
+        case "Comisaría":
+            return name.contains("comisaría") || name.contains("comisaria") || name.contains("policía") || name.contains("policia") || subtitle.contains("seguridad")
+        default:
+            return true
         }
     }
     
@@ -163,13 +214,23 @@ struct MapView: View {
                             
                             // Botón de filtros
                             Button(action: { showingFilters.toggle() }) {
-                                Image(systemName: "line.3.horizontal.decrease.circle")
-                                    .font(.title2)
-                                    .foregroundColor(.blue)
-                                    .padding()
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 3)
+                                ZStack(alignment: .topTrailing) {
+                                    Image(systemName: "line.3.horizontal.decrease.circle")
+                                        .font(.title2)
+                                        .foregroundColor(.blue)
+                                        .padding()
+                                        .background(Color.white)
+                                        .clipShape(Circle())
+                                        .shadow(radius: 3)
+                                    
+                                    // Indicador cuando hay un filtro activo
+                                    if selectedCategory != "Todos" || filterAccessibleOnly {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 12, height: 12)
+                                            .offset(x: -8, y: 8)
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal)
@@ -191,101 +252,140 @@ struct MapView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
-                    // Leyenda de marcadores
-                    if !isSelectingLocation && showNearbyPlaces {
-                        HStack(spacing: 16) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "mappin.circle.fill")
-                                    .foregroundColor(.red)
+                    // Indicadores de filtros activos
+                    VStack(spacing: 6) {
+                        // Indicador de categoría activa
+                        if selectedCategory != "Todos" && !isSelectingLocation {
+                            HStack {
+                                Text("Filtrando: \(selectedCategory)")
                                     .font(.caption)
-                                Text("Guardados")
-                                    .font(.caption2)
                                     .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.orange)
+                                    .cornerRadius(15)
+                                
+                                Button(action: {
+                                    withAnimation {
+                                        selectedCategory = "Todos"
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                }
                             }
-                            
-                            HStack(spacing: 4) {
-                                Image(systemName: "mappin.circle")
-                                    .foregroundColor(.blue)
-                                    .font(.caption)
-                                Text("Cercanos")
-                                    .font(.caption2)
-                                    .foregroundColor(.white)
-                            }
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(15)
-                        .padding(.top, 8)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        
+                        // Indicador de accesibilidad activa
+                        if filterAccessibleOnly && !isSelectingLocation {
+                            HStack {
+                                Image(systemName: "figure.roll")
+                                    .font(.caption)
+                                Text("Solo lugares accesibles")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                
+                                Button(action: {
+                                    withAnimation {
+                                        filterAccessibleOnly = false
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.green)
+                            .cornerRadius(15)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    .padding(.top, 8)
+                    
+                    // Botones de filtro (Guardados y Cercanos) - centrados
+                    if !isSelectingLocation {
+                        HStack {
+                            Spacer()
+                            
+                            HStack(spacing: 0) {
+                                // Filtro Guardados
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        showSavedPlaces.toggle()
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "exclamationmark.octagon.fill")
+                                            .font(.system(size: 14))
+                                        Text("Guardados")
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(showSavedPlaces ? .white : .gray)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(showSavedPlaces ? Color.red : Color.white)
+                                }
+                                
+                                // Filtro Cercanos
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        showNearbyFilter.toggle()
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "info.circle.fill")
+                                            .font(.system(size: 14))
+                                        Text("Cercanos")
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(showNearbyFilter ? .white : .gray)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(showNearbyFilter ? Color.blue : Color.white)
+                                }
+                            }
+                            .clipShape(Capsule())
+                            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
+                            
+                            Spacer()
+                        }
+                        .padding(.top, 10)
                     }
                     
                     Spacer()
                 }
                 
-                // MARK: - Controles del Mapa
+                // Botón de centrar en ubicación (abajo a la derecha)
                 VStack {
-                    HStack {
-                        Spacer()
-                        
-                        VStack(spacing: 65) {
-                            // Botón de opciones del mapa
-                            Button(action: { showingMapOptions.toggle() }) {
-                                Image(systemName: "map")
-                                    .font(.title2)
-                                    .foregroundColor(.blue)
-                                    .padding()
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 5)
-                            }
-                            .actionSheet(isPresented: $showingMapOptions) {
-                                ActionSheet(
-                                    title: Text("Tipo de Mapa"),
-                                    buttons: [
-                                        .default(Text("Estándar")) { mapType = .standard },
-                                        .default(Text("Satélite")) { mapType = .satellite },
-                                        .default(Text("Híbrido")) { mapType = .hybrid },
-                                        .cancel(Text("Cancelar"))
-                                    ]
-                                )
-                            }
-                            
-                            // Botón para mostrar/ocultar lugares cercanos
-                            Button(action: { 
-                                withAnimation {
-                                    showNearbyPlaces.toggle()
-                                }
-                                
-                            }) {
-                                Image(systemName: showNearbyPlaces ? "eye.fill" : "eye.slash.fill")
-                                    .font(.title2)
-                                    .foregroundColor(showNearbyPlaces ? .green : .gray)
-                                    .padding()
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 5)
-                            }
-                        }
-                        .padding(.trailing)
-                    }
-                    
                     Spacer()
-                    
                     HStack {
-                        // Botón para centrar en ubicación del usuario
-                        Button(action: centerOnUserLocation) {
-                            Image("marcador")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 120, height: 120)
-                        }
-                        .padding(.leading)
-                        
                         Spacer()
-                        
-                        // Botones de acción
-                        if isSelectingLocation {
+                        Button(action: centerOnUserLocation) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.blue)
+                                .frame(width: 44, height: 44)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 200)
+                    }
+                }
+                
+                // Botones de acción cuando se está seleccionando ubicación
+                if isSelectingLocation {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            
                             // Botón para confirmar ubicación
                             Button(action: confirmLocation) {
                                 Image(systemName: "checkmark")
@@ -309,21 +409,30 @@ struct MapView: View {
                                     .shadow(radius: 5)
                             }
                             .padding(.trailing)
-                        } else {
-                            // Botón para agregar nuevo lugar
+                        }
+                        .padding(.bottom, 30)
+                    }
+                }
+                
+                // Botón flotante para agregar lugar (cuando no está en modo selección)
+                if !isSelectingLocation {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
                             Button(action: addNewPlace) {
                                 Image(systemName: "plus")
                                     .font(.title2)
                                     .foregroundColor(.white)
-                                    .padding()
+                                    .frame(width: 56, height: 56)
                                     .background(Color.blue)
                                     .clipShape(Circle())
-                                    .shadow(radius: 5)
+                                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
                             }
-                            .padding(.trailing)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 100)
                         }
                     }
-                    .padding(.bottom, 30)
                 }
                 
                 // MARK: - Lista de Lugares (Panel Deslizable)
@@ -351,7 +460,7 @@ struct MapView: View {
                 }
             }
             .sheet(isPresented: $showingFilters) {
-                FilterOptionsView()
+                FilterOptionsView(selectedCategory: $selectedCategory, filterAccessibleOnly: $filterAccessibleOnly)
             }
             .sheet(isPresented: $showingSaveLocation) {
                 SaveLocationView(
@@ -473,11 +582,11 @@ struct MapView: View {
     }
 }
 
-// MARK: - Manager de Ubicación
+// MARK: - Manager de Ubicación para MapView
 /*
  Clase para manejar la ubicación del usuario usando CoreLocation
 */
-class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+class MapLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     
     @Published var currentLocation: CLLocation?
@@ -534,17 +643,51 @@ struct PlaceAnnotationView: View {
     let isSaved: Bool
     let onTap: () -> Void
     
+    // Función para determinar el icono y color según el tipo de lugar
+    private func iconForPlace() -> (icon: String, color: Color) {
+        let name = place.name.lowercased()
+        let subtitle = place.subtitle.lowercased()
+        
+        // Detectar tipo por palabras clave
+        if name.contains("restaurante") || name.contains("restaurant") || subtitle.contains("restaurante") || name.contains("comida") {
+            return ("fork.knife.circle.fill", .orange)
+        } else if name.contains("hospital") || name.contains("clínica") || name.contains("clinic") || subtitle.contains("salud") {
+            return ("cross.circle.fill", .red)
+        } else if name.contains("catedral") || name.contains("iglesia") || name.contains("church") || name.contains("templo") {
+            return ("building.columns.circle.fill", .purple)
+        } else if name.contains("parque") || name.contains("park") || name.contains("jardín") {
+            return ("tree.circle.fill", .green)
+        } else if name.contains("museo") || name.contains("museum") || name.contains("galería") {
+            return ("building.2.circle.fill", .brown)
+        } else if name.contains("escuela") || name.contains("school") || name.contains("universidad") || name.contains("university") {
+            return ("graduationcap.circle.fill", .blue)
+        } else if name.contains("tienda") || name.contains("store") || name.contains("shop") || name.contains("mall") {
+            return("cart.circle.fill", .cyan)
+        } else if name.contains("hotel") || name.contains("motel") {
+            return ("bed.double.circle.fill", .indigo)
+        } else if name.contains("banco") || name.contains("bank") {
+            return ("dollarsign.circle.fill", .green)
+        } else if name.contains("gasolinera") || name.contains("gas") {
+            return ("fuelpump.circle.fill", .yellow)
+        } else {
+            // Icono por defecto
+            return ("mappin.circle.fill", isSaved ? .red : .blue)
+        }
+    }
+    
     var body: some View {
         Button(action: onTap) {
+            let placeIcon = iconForPlace()
+            
             VStack(spacing: 0) {
-                // Icono diferente según si está guardado o no
-                Image(systemName: isSaved ? "mappin.circle.fill" : "mappin.circle")
+                // Icono dinámico según el tipo de lugar
+                Image(systemName: placeIcon.icon)
                     .font(.title)
-                    .foregroundColor(isSaved ? .red : .blue)
+                    .foregroundColor(placeIcon.color)
                 
                 Image(systemName: "triangle.fill")
                     .font(.caption)
-                    .foregroundColor(isSaved ? .red : .blue)
+                    .foregroundColor(placeIcon.color)
                     .offset(x: 0, y: -5)
             }
         }
@@ -644,12 +787,46 @@ struct PlaceListRow: View {
     let place: Place
     let onTap: () -> Void
     
+    // Función para determinar el icono y color según el tipo de lugar
+    private func iconForPlace() -> (icon: String, color: Color) {
+        let name = place.name.lowercased()
+        let subtitle = place.subtitle.lowercased()
+        
+        // Detectar tipo por palabras clave
+        if name.contains("restaurante") || name.contains("restaurant") || subtitle.contains("restaurante") || name.contains("comida") {
+            return ("fork.knife.circle.fill", .orange)
+        } else if name.contains("hospital") || name.contains("clínica") || name.contains("clinic") || subtitle.contains("salud") {
+            return ("cross.circle.fill", .red)
+        } else if name.contains("catedral") || name.contains("iglesia") || name.contains("church") || name.contains("templo") {
+            return ("building.columns.circle.fill", .purple)
+        } else if name.contains("parque") || name.contains("park") || name.contains("jardín") {
+            return ("tree.circle.fill", .green)
+        } else if name.contains("museo") || name.contains("museum") || name.contains("galería") {
+            return ("building.2.circle.fill", .brown)
+        } else if name.contains("escuela") || name.contains("school") || name.contains("universidad") || name.contains("university") {
+            return ("graduationcap.circle.fill", .blue)
+        } else if name.contains("tienda") || name.contains("store") || name.contains("shop") || name.contains("mall") {
+            return("cart.circle.fill", .cyan)
+        } else if name.contains("hotel") || name.contains("motel") {
+            return ("bed.double.circle.fill", .indigo)
+        } else if name.contains("banco") || name.contains("bank") {
+            return ("dollarsign.circle.fill", .green)
+        } else if name.contains("gasolinera") || name.contains("gas") {
+            return ("fuelpump.circle.fill", .yellow)
+        } else {
+            // Icono por defecto
+            return ("mappin.circle.fill", .red)
+        }
+    }
+    
     var body: some View {
         Button(action: onTap) {
+            let placeIcon = iconForPlace()
+            
             HStack(spacing: 15) {
-                Image(systemName: "mappin.circle.fill")
+                Image(systemName: placeIcon.icon)
                     .font(.title2)
-                    .foregroundColor(.red)
+                    .foregroundColor(placeIcon.color)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(place.name)
@@ -681,12 +858,46 @@ struct CompactPlaceCard: View {
     let place: Place
     let onTap: () -> Void
     
+    // Función para determinar el icono y color según el tipo de lugar
+    private func iconForPlace() -> (icon: String, color: Color) {
+        let name = place.name.lowercased()
+        let subtitle = place.subtitle.lowercased()
+        
+        // Detectar tipo por palabras clave
+        if name.contains("restaurante") || name.contains("restaurant") || subtitle.contains("restaurante") || name.contains("comida") {
+            return ("fork.knife.circle.fill", .orange)
+        } else if name.contains("hospital") || name.contains("clínica") || name.contains("clinic") || subtitle.contains("salud") {
+            return ("cross.circle.fill", .red)
+        } else if name.contains("catedral") || name.contains("iglesia") || name.contains("church") || name.contains("templo") {
+            return ("building.columns.circle.fill", .purple)
+        } else if name.contains("parque") || name.contains("park") || name.contains("jardín") {
+            return ("tree.circle.fill", .green)
+        } else if name.contains("museo") || name.contains("museum") || name.contains("galería") {
+            return ("building.2.circle.fill", .brown)
+        } else if name.contains("escuela") || name.contains("school") || name.contains("universidad") || name.contains("university") {
+            return ("graduationcap.circle.fill", .blue)
+        } else if name.contains("tienda") || name.contains("store") || name.contains("shop") || name.contains("mall") {
+            return("cart.circle.fill", .cyan)
+        } else if name.contains("hotel") || name.contains("motel") {
+            return ("bed.double.circle.fill", .indigo)
+        } else if name.contains("banco") || name.contains("bank") {
+            return ("dollarsign.circle.fill", .green)
+        } else if name.contains("gasolinera") || name.contains("gas") {
+            return ("fuelpump.circle.fill", .yellow)
+        } else {
+            // Icono por defecto
+            return ("mappin.circle.fill", .red)
+        }
+    }
+    
     var body: some View {
         Button(action: onTap) {
+            let placeIcon = iconForPlace()
+            
             VStack(spacing: 8) {
-                Image(systemName: "mappin.circle.fill")
+                Image(systemName: placeIcon.icon)
                     .font(.title)
-                    .foregroundColor(.red)
+                    .foregroundColor(placeIcon.color)
                 
                 Text(place.name)
                     .font(.caption)
@@ -1044,69 +1255,135 @@ struct MapView_Previews: PreviewProvider {
 */
 struct FilterOptionsView: View {
     @Environment(\.dismiss) var dismiss
-    @State private var selectedCategory = "Todos"
+    @Binding var selectedCategory: String
+    @Binding var filterAccessibleOnly: Bool
     
-    let categories = ["Restaurantes", "Hospitales", "Bomberos", "IMSS", "Comisaría"]
+    let categories = ["Todos", "Restaurantes", "Hospitales", "Bomberos", "IMSS", "Comisaría"]
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.title3)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Filtro")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Color.clear
-                        .frame(width: 44)
-                }
-                .padding()
-                
-                Divider()
-                
-                ScrollView {
-                    VStack(spacing: 16) {
-                        ForEach(categories, id: \.self) { category in
-                            CategoryButton(
-                                title: category,
-                                isSelected: selectedCategory == category
-                            ) {
-                                selectedCategory = category
-                            }
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.title3)
+                                .foregroundColor(.primary)
                         }
                         
-                        // Botón para ver alertas de emergencia
-                        NavigationLink(destination: EmergencyAlertsView()) {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.red)
-                                
-                                Text("Ver alertas de emergencia")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color(UIColor.systemGray6))
-                            .cornerRadius(12)
-                        }
-                        .padding(.top, 20)
+                        Spacer()
+                        
+                        Text("Filtros")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Spacer()
+                        
+                        Color.clear
+                            .frame(width: 44)
                     }
                     .padding()
+                    
+                    Divider()
+                    
+                    VStack(spacing: 24) {
+                        // Sección de accesibilidad
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("ACCESIBILIDAD")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                            
+                            VStack(spacing: 0) {
+                                HStack {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "figure.roll")
+                                            .font(.title3)
+                                            .foregroundColor(.green)
+                                            .frame(width: 30)
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Solo lugares accesibles")
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                            
+                                            Text("Filtra lugares con reseñas de accesibilidad")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Toggle("", isOn: $filterAccessibleOnly)
+                                        .labelsHidden()
+                                        .tint(.green)
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemBackground))
+                                .cornerRadius(12)
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Sección de categorías
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("CATEGORÍAS")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                            
+                            VStack(spacing: 12) {
+                                ForEach(categories, id: \.self) { category in
+                                    CategoryButton(
+                                        title: category,
+                                        isSelected: selectedCategory == category
+                                    ) {
+                                        selectedCategory = category
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Botones de acción
+                        VStack(spacing: 12) {
+                            Button(action: {
+                                selectedCategory = "Todos"
+                                filterAccessibleOnly = false
+                            }) {
+                                Text("Limpiar filtros")
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.blue, lineWidth: 2)
+                                    )
+                            }
+                            
+                            Button(action: {
+                                dismiss()
+                            }) {
+                                Text("Aplicar filtros")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color.blue)
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                    }
+                    .padding(.vertical, 20)
                 }
             }
             .navigationBarHidden(true)
@@ -1191,105 +1468,6 @@ struct EmergencyAlertsView: View {
     }
 }
 
-// MARK: - Vista de Mapa de Emergencias
-struct EmergencyMapView: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var searchText = ""
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 20.6737, longitude: -103.3444), // Guadalajara Centro
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
-    
-    let emergencyLocations = [
-        EmergencyLocation(name: "IMSS", type: "IMSS", latitude: 20.6750, longitude: -103.3450),
-        EmergencyLocation(name: "Hospital", type: "Hospital", latitude: 20.6720, longitude: -103.3480),
-        EmergencyLocation(name: "Bomberos", type: "Bomberos", latitude: 20.6760, longitude: -103.3420)
-    ]
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Map(coordinateRegion: $region,
-                    showsUserLocation: true,
-                    annotationItems: emergencyLocations) { location in
-                    MapAnnotation(coordinate: CLLocationCoordinate2D(
-                        latitude: location.latitude,
-                        longitude: location.longitude
-                    )) {
-                        VStack {
-                            Image(systemName: iconForType(location.type))
-                                .font(.title)
-                                .foregroundColor(colorForType(location.type))
-                            
-                            Text(location.type)
-                                .font(.caption2)
-                                .padding(4)
-                                .background(Color.white)
-                                .cornerRadius(4)
-                        }
-                    }
-                }
-                .ignoresSafeArea()
-                
-                // Barra de búsqueda superior
-                VStack {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        TextField("Buscar lugares de emergencia", text: $searchText)
-                            .textFieldStyle(PlainTextFieldStyle())
-                    }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(10)
-                    .shadow(radius: 3)
-                    .padding()
-                    
-                    Spacer()
-                }
-            }
-            .navigationTitle("Lugares de Emergencia")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func iconForType(_ type: String) -> String {
-        switch type {
-        case "IMSS": return "cross.case.fill"
-        case "Hospital": return "staroflife.fill"
-        case "Bomberos": return "flame.fill"
-        default: return "mappin.circle.fill"
-        }
-    }
-    
-    private func colorForType(_ type: String) -> Color {
-        switch type {
-        case "IMSS": return .blue
-        case "Hospital": return .red
-        case "Bomberos": return .orange
-        default: return .gray
-        }
-    }
-}
-
-// MARK: - Modelo de Ubicación de Emergencia
-struct EmergencyLocation: Identifiable {
-    let id = UUID()
-    let name: String
-    let type: String
-    let latitude: Double
-    let longitude: Double
-}
-
 // MARK: - Vista para Guardar Nueva Ubicación
 struct SaveLocationView: View {
     @Environment(\.dismiss) var dismiss
@@ -1364,66 +1542,203 @@ struct AddReviewView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var userName = "Usuario Actual"
-    @State private var rating: Double = 3.0
+    @State private var rating: Int = 0
     @State private var comment = ""
+    @State private var isAccessible: Bool = false
+    @State private var accessibilityDescription = ""
     @FocusState private var isCommentFocused: Bool
+    @FocusState private var isAccessibilityFocused: Bool
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Tu Calificación")) {
-                    VStack(spacing: 10) {
-                        HStack {
-                            ForEach(1..<6) { index in
-                                Button(action: {
-                                    rating = Double(index)
-                                }) {
-                                    Image(systemName: index <= Int(rating) ? "star.fill" : "star")
-                                        .font(.title)
-                                        .foregroundColor(index <= Int(rating) ? .orange : .gray)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header con fondo
+                    VStack(spacing: 20) {
+                        Text("Tu Calificación")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                        
+                        // Sistema de estrellas interactivo
+                        VStack(spacing: 12) {
+                            HStack(spacing: 15) {
+                                ForEach(1...5, id: \.self) { index in
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                            rating = index
+                                        }
+                                    }) {
+                                        Image(systemName: index <= rating ? "star.fill" : "star")
+                                            .font(.system(size: 45))
+                                            .foregroundColor(index <= rating ? .orange : Color(UIColor.systemGray4))
+                                            .scaleEffect(index == rating ? 1.1 : 1.0)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
+                            
+                            if rating > 0 {
+                                Text("\(rating) de 5 estrellas")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("Puntúa este lugar")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                    }
+                    .background(Color(UIColor.systemBackground))
+                    
+                    // Sección de comentario
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Tu Reseña")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
                         
-                        Text("\(Int(rating)) de 5 estrellas")
+                        ZStack(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(UIColor.systemGray6))
+                                .frame(height: 150)
+                            
+                            TextEditor(text: $comment)
+                                .padding(8)
+                                .frame(height: 150)
+                                .background(Color.clear)
+                                .focused($isCommentFocused)
+                                .scrollContentBackground(.hidden)
+                            
+                            if comment.isEmpty {
+                                Text("Escribe tu opinión sobre este lugar...")
+                                    .foregroundColor(Color(UIColor.placeholderText))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 16)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        Text("\(comment.count) caracteres")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.horizontal, 20)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                }
-                
-                Section(header: Text("Tu Reseña")) {
-                    TextEditor(text: $comment)
-                        .frame(height: 150)
-                        .focused($isCommentFocused)
                     
-                    Text("\(comment.count) caracteres")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                
-                Section {
-                    Button(action: {
-                        let newReview = Review(
-                            userName: userName,
-                            rating: rating,
-                            comment: comment.isEmpty ? "Sin comentarios" : comment,
-                            date: Date()
-                        )
-                        onSave(newReview)
-                        dismiss()
-                    }) {
+                    // Sección de accesibilidad
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Discapacidad:")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                        
                         HStack {
+                            Text("¿Es accesible para personas\ncon discapacidad?")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
                             Spacer()
-                            Text("Publicar Reseña")
-                                .fontWeight(.semibold)
-                            Spacer()
+                            
+                            Toggle("", isOn: $isAccessible)
+                                .labelsHidden()
+                                .tint(.green)
+                                .onChange(of: isAccessible) { newValue in
+                                    if newValue {
+                                        // Enfocar automáticamente el campo cuando se activa
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            isAccessibilityFocused = true
+                                        }
+                                    } else {
+                                        // Limpiar el texto si se desactiva
+                                        accessibilityDescription = ""
+                                    }
+                                }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color(UIColor.systemBackground))
+                        
+                        // Campo de texto que aparece cuando isAccessible está activado
+                        if isAccessible {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Describe las facilidades de accesibilidad")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 20)
+                                
+                                ZStack(alignment: .topLeading) {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(UIColor.systemGray6))
+                                        .frame(minHeight: 100)
+                                    
+                                    TextEditor(text: $accessibilityDescription)
+                                        .padding(8)
+                                        .frame(minHeight: 100)
+                                        .background(Color.clear)
+                                        .focused($isAccessibilityFocused)
+                                        .scrollContentBackground(.hidden)
+                                    
+                                    if accessibilityDescription.isEmpty {
+                                        Text("Ej: Cuenta con rampa de acceso, baños adaptados, estacionamiento para personas con discapacidad...")
+                                            .foregroundColor(Color(UIColor.placeholderText))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 16)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                
+                                Text("\(accessibilityDescription.count) caracteres")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .padding(.horizontal, 20)
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .animation(.easeInOut(duration: 0.3), value: isAccessible)
                         }
                     }
+                    
+                    // Botón de enviar
+                    Button(action: {
+                        if canSubmit() {
+                            let newReview = Review(
+                                userName: userName,
+                                rating: Double(rating),
+                                comment: comment.isEmpty ? "Sin comentarios" : comment,
+                                date: Date(),
+                                isAccessible: isAccessible,
+                                accessibilityDescription: accessibilityDescription
+                            )
+                            onSave(newReview)
+                            dismiss()
+                        }
+                    }) {
+                        Text("Enviar")
+                            .font(.headline)
+                            .foregroundColor(canSubmit() ? .white : Color(UIColor.systemGray3))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(canSubmit() ? Color.green.opacity(0.8) : Color(UIColor.systemGray5))
+                            )
+                    }
+                    .disabled(!canSubmit())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 30)
+                    .padding(.bottom, 20)
                 }
             }
+            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Nueva Reseña")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1431,12 +1746,23 @@ struct AddReviewView: View {
                     Button("Cancelar") {
                         dismiss()
                     }
+                    .foregroundColor(.primary)
                 }
             }
-            .onAppear {
-                isCommentFocused = true
-            }
         }
+    }
+    
+    // Validación para enviar la reseña
+    private func canSubmit() -> Bool {
+        // Debe tener calificación
+        guard rating > 0 else { return false }
+        
+        // Si está marcado como accesible, debe tener descripción
+        if isAccessible && accessibilityDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return false
+        }
+        
+        return true
     }
 }
 
@@ -1445,7 +1771,7 @@ struct ReviewCard: View {
     let review: Review
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 // Avatar del usuario
                 Circle()
@@ -1482,6 +1808,36 @@ struct ReviewCard: View {
                 .font(.body)
                 .foregroundColor(.primary)
                 .lineLimit(nil)
+            
+            // Mostrar badge de accesibilidad si el lugar es accesible
+            if review.isAccessible {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "figure.roll")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                        
+                        Text("Lugar Accesible")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.green)
+                    .cornerRadius(8)
+                    
+                    if !review.accessibilityDescription.isEmpty {
+                        Text(review.accessibilityDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
+            }
         }
         .padding()
         .background(Color(UIColor.systemGray6))

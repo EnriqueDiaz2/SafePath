@@ -1188,6 +1188,7 @@ struct MatchDetailCard: View {
 struct EmergencyOptionsView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appDataManager: AppDataManager
+    @State private var showingEmergencyMap = false
     
     var body: some View {
         NavigationView {
@@ -1266,10 +1267,14 @@ struct EmergencyOptionsView: View {
                             )
                         }
                         
-                        // Botón de lugares de emergencia
-                        NavigationLink(destination: MapView().environmentObject(appDataManager)) {
+                        // Botón de lugares de emergencia - Mapa con POIs de emergencia
+                        Button(action: {
+                            showingEmergencyMap = true
+                        }) {
                             HStack {
                                 Spacer()
+                                Image(systemName: "map.fill")
+                                    .font(.headline)
                                 Text("Ver lugares de emergencia")
                                     .font(.headline)
                                     .foregroundColor(.primary)
@@ -1294,6 +1299,24 @@ struct EmergencyOptionsView: View {
                         Image(systemName: "chevron.left")
                             .foregroundColor(.primary)
                     }
+                }
+            }
+            .fullScreenCover(isPresented: $showingEmergencyMap) {
+                NavigationView {
+                    EmergencyMapView()
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button(action: {
+                                    showingEmergencyMap = false
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Volver")
+                                    }
+                                }
+                            }
+                        }
                 }
             }
         }
