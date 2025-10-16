@@ -236,13 +236,24 @@ struct ChatGroupsView: View {
         ChatGroup(name: "Brasil vs Ecuador", count: 0, image: "⚽", color: Color.yellow)
     ]
     
+    // Mis chats guardados
+    @State private var misChats: [ChatGroup] = []
+    @State private var showingJoinChatModal = false
+    @State private var selectedChatToJoin: ChatGroup?
+    @State private var selectedChat: ChatGroup?
+    @State private var showChatDetail = false
+    
     var filteredChats: [ChatGroup] {
         switch selectedFilter {
+        case "Mis chats":
+            // Siempre mostrar Social Feed al principio, luego los chats guardados
+            let socialFeed = ChatGroup(name: "Social Feed", count: 0, image: "💬", color: Color.green)
+            return [socialFeed] + misChats
         case "Paises":
             return paisesChats
-        case "Cede\n(ciudad)":
+        case "Cede":
             return ciudadesChats
-        case "Fase":
+        case "Partidos":
             return partidosChats
         default:
             return todosChats
@@ -281,7 +292,8 @@ struct ChatGroupsView: View {
                                 showingFilterSheet = true
                             }) {
                                 HStack {
-                                    Text(selectedFilter == "Cede\n(ciudad)" ? "Filtros: Ciudades" : "Filtros: \(selectedFilter.replacingOccurrences(of: "Todos los chats", with: "Todos"))")
+                                    let filterDisplay = getFilterDisplayName(selectedFilter)
+                                    Text("Filtros: \(filterDisplay)")
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                     
@@ -299,10 +311,24 @@ struct ChatGroupsView: View {
                             ScrollView {
                                 VStack(spacing: 12) {
                                     ForEach(filteredChats) { chat in
-                                        NavigationLink(destination: ChatDetailView(chatGroup: chat)) {
-                                            ChatGroupRow(chatGroup: chat)
+                                        if selectedFilter == "Mis chats" || chat.name == "Social Feed" {
+                                            // Si es "Mis chats" o Social Feed, permitir navegar directamente
+                                            Button(action: {
+                                                selectedChat = chat
+                                                showChatDetail = true
+                                            }) {
+                                                ChatGroupRow(chatGroup: chat)
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        } else {
+                                            // Si no es "Mis chats" ni Social Feed, mostrar modal para unirse
+                                            Button(action: {
+                                                selectedChatToJoin = chat
+                                                showingJoinChatModal = true
+                                            }) {
+                                                ChatGroupRow(chatGroup: chat)
+                                            }
                                         }
-                                        .buttonStyle(PlainButtonStyle())
                                     }
                                 }
                                 .padding(.horizontal)
@@ -316,8 +342,138 @@ struct ChatGroupsView: View {
                 .sheet(isPresented: $showingFilterSheet) {
                     FilterSheetView(selectedFilter: $selectedFilter)
                 }
+                .sheet(isPresented: $showingJoinChatModal) {
+                    if let chatToJoin = selectedChatToJoin {
+                        JoinChatModalView(
+                            chatGroup: chatToJoin,
+                            isPresented: $showingJoinChatModal,
+                            onJoin: { joinChat(chatToJoin) }
+                        )
+                    }
+                }
+                .sheet(isPresented: $showChatDetail) {
+                    if let chat = selectedChat {
+                        ChatDetailView(chatGroup: chat)
+                    }
+                }
             }
         }
+    }
+    
+    func getFilterDisplayName(_ filter: String) -> String {
+        switch filter {
+        case "Mis chats":
+            return "Mis Chats"
+        case "Paises":
+            return "Países"
+        case "Cede":
+            return "Ciudades"
+        case "Partidos":
+            return "Partidos"
+        default:
+            return "Todos"
+        }
+    }
+    
+    func joinChat(_ chat: ChatGroup) {
+        // Agregar el chat a "Mis chats" si no está ya ahí
+        if !misChats.contains(where: { $0.id == chat.id }) {
+            misChats.append(chat)
+        }
+        showingJoinChatModal = false
+        selectedChatToJoin = nil
+    }
+}
+
+// MARK: - Modal para unirse a un chat
+struct JoinChatModalView: View {
+    @Environment(\.dismiss) var dismiss
+    let chatGroup: ChatGroup
+    @Binding var isPresented: Bool
+    let onJoin: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("Unirse a Chat")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding()
+            
+            Divider()
+            
+            // Contenido
+            VStack(spacing: 24) {
+                // Icono del chat
+                ZStack {
+                    Circle()
+                        .fill(chatGroup.color.opacity(0.2))
+                        .frame(width: 100, height: 100)
+                    
+                    Text(chatGroup.image)
+                        .font(.system(size: 60))
+                }
+                
+                // Información del chat
+                VStack(spacing: 8) {
+                    Text("¿Unirse a este chat?")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(chatGroup.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Podrás participar en conversaciones y ver mensajes de la comunidad")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal)
+            }
+            
+            Spacer()
+            
+            // Botones de acción
+            VStack(spacing: 12) {
+                Button(action: {
+                    onJoin()
+                    dismiss()
+                }) {
+                    Text("Unirse al chat")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(red: 0.0, green: 0.5, blue: 0.4))
+                        .cornerRadius(12)
+                }
+                
+                Button(action: { dismiss() }) {
+                    Text("Cancelar")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(UIColor.systemGray6))
+                        .cornerRadius(12)
+                }
+            }
+            .padding()
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }
 
@@ -353,9 +509,10 @@ struct FilterSheetView: View {
     
     let filterOptions = [
         ("Todos los chats", "Todos"),
+        ("Mis chats", "Mis Chats"),
         ("Paises", "Países"),
-        ("Cede", "Cede\n(ciudad)"),
-        ("Fase", "Fase\n(Partidos)")
+        ("Cede", "Ciudades"),
+        ("Partidos", "Partidos")
     ]
     
     var body: some View {
@@ -435,67 +592,113 @@ struct ChatDetailView: View {
 // MARK: - Vista de Social Feed
 struct SocialFeedView: View {
     @Environment(\.dismiss) var dismiss
+    @State private var showingCreatePost = false
     @State private var posts: [SocialPost] = [
         SocialPost(
-            userName: "Hablando en el grupo de México",
+            userName: "Carlos López",
             timeAgo: "hace 8 horas",
-            content: "Llegando al estadio Akron",
+            content: "Llegando al estadio Akron 🏟️ ¡Qué emoción!",
             likes: 25,
             comments: 5,
             hasImage: true,
             imageName: "Estadio"
         ),
         SocialPost(
-            userName: "Desde en el grupo de Colombia",
+            userName: "José María",
             timeAgo: "hace 10 horas",
-            content: "",
+            content: "¡Vamos México! 🇲🇽 Este partido será épico",
             likes: 0,
             comments: 18,
             hasImage: false,
             imageName: nil
         ),
         SocialPost(
-            userName: "Hablando en el grupo de Brasil",
+            userName: "Ana García",
             timeAgo: "hace 12 horas",
-            content: "La afición brasileña está lista 🎉⚽",
+            content: "La afición brasileña está lista 🎉⚽ Ambiente increíble en la ciudad",
             likes: 45,
             comments: 12,
-            hasImage: false,
-            imageName: nil
+            hasImage: true,
+            imageName: "Estadio"
         ),
         SocialPost(
-            userName: "Hablando en el grupo de Estados Unidos",
+            userName: "Miguel Rodríguez",
             timeAgo: "hace 1 día",
-            content: "¡Primer partido del Mundial! 🇺🇸",
+            content: "¡Primer partido del Mundial! 🇺🇸 No me lo pierdo",
             likes: 89,
             comments: 24,
             hasImage: false,
             imageName: nil
         ),
         SocialPost(
-            userName: "Desde en el grupo de Canadá",
+            userName: "Patricia González",
             timeAgo: "hace 1 día",
-            content: "Toronto está listo para recibir a los equipos",
+            content: "Toronto está listo para recibir a los equipos 🏆 Increíble ver esto en persona",
             likes: 32,
             comments: 7,
-            hasImage: false,
-            imageName: nil
+            hasImage: true,
+            imageName: "Estadio"
         ),
         SocialPost(
-            userName: "Hablando en el grupo de Japón",
+            userName: "David Chen",
             timeAgo: "hace 2 días",
-            content: "¡Qué emoción! Primera vez en Norteamérica ⚽🇯🇵",
+            content: "¡Qué emoción! Primera vez en Norteamérica ⚽🇯🇵 Sueño cumplido",
             likes: 56,
             comments: 15,
             hasImage: false,
             imageName: nil
         ),
         SocialPost(
-            userName: "Desde en el grupo de Ecuador",
+            userName: "Laura Martínez",
             timeAgo: "hace 2 días",
-            content: "La selección ecuatoriana viene con todo",
+            content: "La selección ecuatoriana viene con todo 💪 Orgullosa de representar a nuestro país",
             likes: 41,
             comments: 9,
+            hasImage: true,
+            imageName: "Estadio"
+        ),
+        SocialPost(
+            userName: "Roberto Sánchez",
+            timeAgo: "hace 3 días",
+            content: "Entrenamiento con los compañeros 🏃‍♂️ Listos para la competencia",
+            likes: 78,
+            comments: 22,
+            hasImage: true,
+            imageName: "Estadio"
+        ),
+        SocialPost(
+            userName: "Sophia López",
+            timeAgo: "hace 3 días",
+            content: "¿Alguien más tan emocionado como yo? ⚽🔥",
+            likes: 102,
+            comments: 34,
+            hasImage: false,
+            imageName: nil
+        ),
+        SocialPost(
+            userName: "Francisco Ruiz",
+            timeAgo: "hace 4 días",
+            content: "Preparando las banderas para apoyar 🇲🇽🇨🇦 ¡Que comience la fiesta!",
+            likes: 67,
+            comments: 19,
+            hasImage: true,
+            imageName: "Estadio"
+        ),
+        SocialPost(
+            userName: "Valentina Torres",
+            timeAgo: "hace 4 días",
+            content: "Con mi familia viendo el pre-partido 👨‍👩‍👧‍👦 Momento memorable",
+            likes: 55,
+            comments: 11,
+            hasImage: true,
+            imageName: "Estadio"
+        ),
+        SocialPost(
+            userName: "Andrés Mendoza",
+            timeAgo: "hace 5 días",
+            content: "¡Lo mejor de estar aquí es la gente! 🙌 Conociendo aficionados de todo el mundo",
+            likes: 94,
+            comments: 28,
             hasImage: false,
             imageName: nil
         )
@@ -520,6 +723,11 @@ struct SocialFeedView: View {
                     
                     Spacer()
                     
+                    Button(action: { showingCreatePost = true }) {
+                        Image(systemName: "square.and.pencil")
+                            .foregroundColor(Color(red: 0.0, green: 0.5, blue: 0.4))
+                            .font(.title3)
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top, 20)
@@ -541,6 +749,9 @@ struct SocialFeedView: View {
             .edgesIgnoringSafeArea(.top)
             .navigationBarHidden(true)
         }
+        .sheet(isPresented: $showingCreatePost) {
+            CreatePostView(isPresented: $showingCreatePost, posts: $posts)
+        }
     }
 }
 
@@ -548,6 +759,7 @@ struct SocialFeedView: View {
 struct SocialPostCard: View {
     let post: SocialPost
     @State private var isLiked = false
+    @State private var showComments = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -660,7 +872,9 @@ struct SocialPostCard: View {
                     }
                 }
                 
-                Button(action: {}) {
+                Button(action: {
+                    showComments.toggle()
+                }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bubble.right")
                             .foregroundColor(.primary)
@@ -678,7 +892,152 @@ struct SocialPostCard: View {
             .padding(.bottom, 8)
         }
         .background(Color(UIColor.systemBackground))
+        .sheet(isPresented: $showComments) {
+            CommentsView(post: post, isPresented: $showComments)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
+}
+
+// MARK: - Vista de Comentarios
+struct CommentsView: View {
+    let post: SocialPost
+    @Binding var isPresented: Bool
+    @State private var commentText = ""
+    @State private var comments: [Comment] = [
+        Comment(userName: "María García", timeAgo: "hace 2 horas", text: "¡Qué increíble! 🙌", likes: 5),
+        Comment(userName: "Luis Rodríguez", timeAgo: "hace 3 horas", text: "Vamos México! ⚽🇲🇽", likes: 12),
+        Comment(userName: "Ana López", timeAgo: "hace 4 horas", text: "El estadio se ve hermoso", likes: 8),
+        Comment(userName: "Carlos Mendez", timeAgo: "hace 5 horas", text: "Desearia estar ahí! 😭", likes: 3),
+        Comment(userName: "Sofia González", timeAgo: "hace 6 horas", text: "Que emocionante es esto", likes: 15)
+    ]
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button(action: { isPresented = false }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.primary)
+                        .font(.title3)
+                }
+                
+                Spacer()
+                
+                Text("Comentarios")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.top, 20)
+            .padding(.bottom, 16)
+            
+            Divider()
+            
+            // Lista de comentarios
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(comments) { comment in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(width: 35, height: 35)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .foregroundColor(.gray)
+                                            .font(.system(size: 16))
+                                    )
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(comment.userName)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text(comment.timeAgo)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            Text(comment.text)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                                .padding(.leading, 47)
+                                .padding(.trailing)
+                            
+                            HStack(spacing: 12) {
+                                Button(action: {}) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "heart")
+                                            .font(.caption)
+                                        Text("\(comment.likes)")
+                                            .font(.caption)
+                                    }
+                                    .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.leading, 47)
+                            .padding(.trailing)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(Color(UIColor.systemGray6))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding()
+            }
+            
+            Divider()
+            
+            // Input de nuevo comentario
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 35, height: 35)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 16))
+                    )
+                
+                TextField("Escribe un comentario...", text: $commentText)
+                    .padding(10)
+                    .background(Color(UIColor.systemGray6))
+                    .cornerRadius(20)
+                
+                Button(action: {
+                    if !commentText.isEmpty {
+                        commentText = ""
+                    }
+                }) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(commentText.isEmpty ? .gray : Color(red: 0.0, green: 0.5, blue: 0.4))
+                }
+                .disabled(commentText.isEmpty)
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Modelo de Comentario
+struct Comment: Identifiable {
+    let id = UUID()
+    let userName: String
+    let timeAgo: String
+    let text: String
+    let likes: Int
 }
 
 // MARK: - Modelo de Post Social
@@ -1368,6 +1727,170 @@ struct EmergencyOptionCard: View {
             .padding(.vertical, 12)
             .background(Color(UIColor.systemGray6))
             .cornerRadius(15)
+        }
+    }
+}
+
+// MARK: - Vista de Crear Post
+struct CreatePostView: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var isPresented: Bool
+    @Binding var posts: [SocialPost]
+    @State private var postContent = ""
+    @State private var selectedImage: UIImage?
+    @State private var showingImagePicker = false
+    @State private var hasImage = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button(action: { isPresented = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                Text("Crear Post")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                Button(action: {
+                    publishPost()
+                }) {
+                    Text("Publicar")
+                        .font(.headline)
+                        .foregroundColor(postContent.isEmpty ? .gray : Color(red: 0.0, green: 0.5, blue: 0.4))
+                }
+                .disabled(postContent.isEmpty)
+            }
+            .padding()
+            
+            Divider()
+            
+            // Contenido del post
+            VStack(alignment: .leading, spacing: 12) {
+                // Avatar y nombre de usuario
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 18))
+                        )
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Tu Usuario")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text("Ahora")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 12)
+                
+                // Campo de texto
+                TextEditor(text: $postContent)
+                    .frame(height: 120)
+                    .padding(.horizontal)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            .padding(.horizontal)
+                    )
+                
+                // Botones de acciones
+                HStack(spacing: 16) {
+                    Button(action: {
+                        showingImagePicker = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 18))
+                            Text("Foto")
+                                .font(.subheadline)
+                        }
+                        .foregroundColor(Color(red: 0.0, green: 0.5, blue: 0.4))
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+            }
+            .padding(.vertical, 12)
+            
+            Spacer()
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            SocialFeedImagePicker(image: $selectedImage)
+                .onDisappear {
+                    if selectedImage != nil {
+                        hasImage = true
+                    }
+                }
+        }
+    }
+    
+    func publishPost() {
+        // Crear un nuevo post
+        let newPost = SocialPost(
+            userName: "Tu Usuario",
+            timeAgo: "Ahora",
+            content: postContent,
+            likes: 0,
+            comments: 0,
+            hasImage: hasImage,
+            imageName: hasImage ? "Foto" : nil
+        )
+        
+        // Agregar al inicio de los posts
+        posts.insert(newPost, at: 0)
+        
+        // Cerrar el sheet
+        isPresented = false
+    }
+}
+
+// MARK: - Social Feed Image Picker
+struct SocialFeedImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.dismiss) var dismiss
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: SocialFeedImagePicker
+        
+        init(_ parent: SocialFeedImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.image = image
+            }
+            parent.dismiss()
         }
     }
 }

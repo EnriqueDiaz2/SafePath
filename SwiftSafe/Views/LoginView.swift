@@ -207,7 +207,7 @@ struct TutorialScreenView: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        TextField("Value", text: $nombre)
+                        TextField("Juan Manuel", text: $nombre)
                             .padding()
                             .background(Color(UIColor.systemGray6))
                             .cornerRadius(8)
@@ -220,7 +220,7 @@ struct TutorialScreenView: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        TextField("Value", text: $apellidos)
+                        TextField("Gomez Diaz", text: $apellidos)
                             .padding()
                             .background(Color(UIColor.systemGray6))
                             .cornerRadius(8)
@@ -233,7 +233,7 @@ struct TutorialScreenView: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        TextField("email@domain.com", text: $email)
+                        TextField("juanmanugodi@gmail.com", text: $email)
                             .padding()
                             .background(Color(UIColor.systemGray6))
                             .cornerRadius(8)
@@ -248,7 +248,7 @@ struct TutorialScreenView: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        SecureField("Value", text: $password)
+                        SecureField("juan.g123", text: $password)
                             .padding()
                             .background(Color(UIColor.systemGray6))
                             .cornerRadius(8)
@@ -260,14 +260,14 @@ struct TutorialScreenView: View {
                             .font(.subheadline)
                             .foregroundColor(.black)
                         
-                        SecureField("Value", text: $confirmPassword)
+                        SecureField("juan.g123", text: $confirmPassword)
                             .padding()
                             .background(Color(UIColor.systemGray6))
                             .cornerRadius(8)
                     }
                     
                     // Discapacidad Toggle
-                    VStack(alignment: .leading, spacing: 8) {
+                    /*VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Discapacidad")
                                 .font(.subheadline)
@@ -283,7 +283,7 @@ struct TutorialScreenView: View {
                         Text("Solo para personas con discapacidad")
                             .font(.caption)
                             .foregroundColor(.gray)
-                    }
+                    }*/
                     .padding(.top, 5)
                 }
                 .padding(.horizontal, 30)
@@ -550,7 +550,7 @@ struct LoginScreenView: View {
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             
-                            TextField("ejemplo@correo.com", text: $email)
+                            TextField("juanmanugodi@gmail.com", text: $email)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .keyboardType(.emailAddress)
                                 .autocapitalization(.none)

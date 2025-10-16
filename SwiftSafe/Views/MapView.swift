@@ -16,6 +16,10 @@ struct MapView: View {
         center: CLLocationCoordinate2D(latitude: 20.6737, longitude: -103.3444), // Guadalajara Centro, Jalisco, México
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 20.6737, longitude: -103.3444),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    ))
     
     @State private var selectedPlace: Place?
     @State private var showingLocationDetails = false
@@ -126,27 +130,25 @@ struct MapView: View {
         NavigationView {
             ZStack {
                 // MARK: - Mapa Principal
-                Map(coordinateRegion: $region, 
-                    interactionModes: .all,
-                    showsUserLocation: true,
-                    userTrackingMode: .none,
-                    annotationItems: filteredPlaces) { place in
+                Map(position: $cameraPosition) {
+                    UserAnnotation()
                     
-                    // Anotaciones personalizadas para cada lugar
-                    MapAnnotation(coordinate: CLLocationCoordinate2D(
-                        latitude: place.latitude,
-                        longitude: place.longitude
-                    )) {
-                        PlaceAnnotationView(
-                            place: place,
-                            isSaved: isPlaceSaved(place)
-                        ) {
-                            selectedPlace = place
-                            showingLocationDetails.toggle()
+                    ForEach(filteredPlaces, id: \.id) { place in
+                        Annotation("", coordinate: CLLocationCoordinate2D(
+                            latitude: place.latitude,
+                            longitude: place.longitude
+                        )) {
+                            PlaceAnnotationView(
+                                place: place,
+                                isSaved: isPlaceSaved(place)
+                            ) {
+                                selectedPlace = place
+                                showingLocationDetails.toggle()
+                            }
                         }
                     }
                 }
-                .mapStyle(.standard) // Requiere iOS 17+, usar alternativa si es necesario
+                .mapStyle(.standard)
                 .onAppear {
                     // Solicitar permisos de ubicación al aparecer la vista
                     locationManager.requestLocationPermission()
@@ -493,9 +495,10 @@ struct MapView: View {
                 }
             }
             .background(
-                NavigationLink(destination: EmergencyAlertsView(), isActive: $navigateToAlerts) {
+                NavigationLink(value: "alerts") {
                     EmptyView()
                 }
+                .hidden()
             )
         }
     }
@@ -1650,8 +1653,8 @@ struct AddReviewView: View {
                             Toggle("", isOn: $isAccessible)
                                 .labelsHidden()
                                 .tint(.green)
-                                .onChange(of: isAccessible) { newValue in
-                                    if newValue {
+                                .onChange(of: isAccessible) {
+                                    if isAccessible {
                                         // Enfocar automáticamente el campo cuando se activa
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                             isAccessibilityFocused = true
