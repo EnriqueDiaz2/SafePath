@@ -39,54 +39,44 @@ struct CustomTabBar: View {
     @Binding var selectedTab: Int
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Línea indicadora superior
-            Rectangle()
-                .fill(Color.black)
-                .frame(height: 4)
-                .frame(width: 120)
-                .cornerRadius(2)
-                .padding(.bottom, 8)
-            
-            HStack {
-                // Botón Inicio
-                TabBarButton(
-                    icon: "house.fill",
-                    isSelected: selectedTab == 0,
-                    useCustomIcon: false
-                ) {
-                    selectedTab = 0
-                }
-                
-                Spacer()
-                
-                // Botón Mapa (centro con ícono personalizado de marcador)
-                TabBarButton(
-                    icon: "marcador",
-                    isSelected: selectedTab == 1,
-                    useCustomIcon: true
-                ) {
-                    selectedTab = 1
-                }
-                
-                Spacer()
-                
-                // Botón Perfil
-                TabBarButton(
-                    icon: "person.fill",
-                    isSelected: selectedTab == 2,
-                    useCustomIcon: false
-                ) {
-                    selectedTab = 2
-                }
+        HStack {
+            // Botón Inicio
+            TabBarButton(
+                icon: "house.fill",
+                isSelected: selectedTab == 0,
+                useCustomIcon: false
+            ) {
+                selectedTab = 0
             }
-            .padding(.horizontal, 50)
-            .padding(.vertical, 15)
-            .background(
-                Color(UIColor.systemBackground)
-                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
-            )
+            
+            Spacer()
+            
+            // Botón Mapa (centro con ícono personalizado de marcador)
+            TabBarButton(
+                icon: "marcador",
+                isSelected: selectedTab == 1,
+                useCustomIcon: true
+            ) {
+                selectedTab = 1
+            }
+            
+            Spacer()
+            
+            // Botón Perfil
+            TabBarButton(
+                icon: "person.fill",
+                isSelected: selectedTab == 2,
+                useCustomIcon: false
+            ) {
+                selectedTab = 2
+            }
         }
+        .padding(.horizontal, 50)
+        .padding(.vertical, 15)
+        .background(
+            Color(UIColor.systemBackground)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
+        )
     }
 }
 

@@ -253,7 +253,7 @@ struct ChatGroupsView: View {
         ZStack(alignment: .top) {
             NavigationView {
                 GeometryReader { geometry in
-                    VStack {
+                    VStack(spacing: 0) {
                         HStack {
                             Button(action: { dismiss() }) {
                                 Image(systemName: "chevron.left")
@@ -264,44 +264,50 @@ struct ChatGroupsView: View {
                             Spacer()
                             
                             Text("Chat grupal")
-                                .font(.headline)
+                                .font(.title2)
+                                .fontWeight(.bold)
                             
                             Spacer()
                             
-                            Color.clear
-                                .frame(width: 44)
                         }
-                        
-                        Button(action: {
-                            showingFilterSheet = true
-                        }) {
-                            HStack {
-                                Text(selectedFilter == "Cede\n(ciudad)" ? "Filtros: Ciudades" : "Filtros: \(selectedFilter.replacingOccurrences(of: "Todos los chats", with: "Todos"))")
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                
-                                Image(systemName: "chevron.down")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 16)
-                            .background(Color(UIColor.systemGray6))
-                            .cornerRadius(20)
-                        }
-                        .padding(.bottom, 4)
-                        
+                        .padding(.horizontal)
+                        .padding(.top, 20)
+                        .padding(.bottom, 16)
+                            
+                            // Grid de opciones de chat social
                         ScrollView {
-                            VStack(spacing: 12) {
-                                ForEach(filteredChats) { chat in
-                                    NavigationLink(destination: ChatDetailView(chatGroup: chat)) {
-                                        ChatGroupRow(chatGroup: chat)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
+                            
+                            Button(action: {
+                                showingFilterSheet = true
+                            }) {
+                                HStack {
+                                    Text(selectedFilter == "Cede\n(ciudad)" ? "Filtros: Ciudades" : "Filtros: \(selectedFilter.replacingOccurrences(of: "Todos los chats", with: "Todos"))")
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    
+                                    Image(systemName: "chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
                                 }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 16)
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(20)
                             }
-                            .padding(.horizontal)
-                            .padding(.top, 4)
+                            .padding(.bottom, 4)
+                            
+                            ScrollView {
+                                VStack(spacing: 12) {
+                                    ForEach(filteredChats) { chat in
+                                        NavigationLink(destination: ChatDetailView(chatGroup: chat)) {
+                                            ChatGroupRow(chatGroup: chat)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                .padding(.horizontal)
+                                .padding(.top, 4)
+                            }
                         }
                     }
                     .edgesIgnoringSafeArea(.top)
@@ -496,45 +502,45 @@ struct SocialFeedView: View {
     ]
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(.primary)
-                        .font(.title3)
+        ScrollView {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.primary)
+                            .font(.title3)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Social Feed")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                    
                 }
+                .padding(.horizontal)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
                 
-                Spacer()
+                Divider()
                 
-                Text("Social Feed")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Color.clear
-                    .frame(width: 44)
-            }
-            .padding(.horizontal)
-            .padding(.top, 50)
-            .padding(.bottom, 12)
-            .background(Color(UIColor.systemBackground))
-            
-            Divider()
-            
-            // Posts Feed
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(posts) { post in
-                        SocialPostCard(post: post)
-                        
-                        Divider()
+                // Posts Feed
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(posts) { post in
+                            SocialPostCard(post: post)
+                            
+                            Divider()
+                        }
                     }
                 }
             }
+            .edgesIgnoringSafeArea(.top)
+            .navigationBarHidden(true)
         }
-        .edgesIgnoringSafeArea(.top)
-        .navigationBarHidden(true)
     }
 }
 
@@ -730,7 +736,7 @@ struct ChatMessagesView: View {
                     
                     Spacer()
                     
-                    HStack(spacing: 16) {
+                    /*HStack(spacing: 16) {
                         Button(action: {}) {
                             Image(systemName: "phone.fill")
                                 .foregroundColor(.primary)
@@ -740,7 +746,7 @@ struct ChatMessagesView: View {
                             Image(systemName: "video.fill")
                                 .foregroundColor(.primary)
                         }
-                    }
+                    }*/
                 }
                 .padding(.horizontal)
                 .padding(.top, geometry.safeAreaInsets.top > 0 ? geometry.safeAreaInsets.top : 4)
