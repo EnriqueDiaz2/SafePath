@@ -631,7 +631,7 @@ struct LoginScreenView: View {
                             Button(action: demoLogin) {
                                 HStack {
                                     Image(systemName: "person.fill")
-                                    Text("Acceso Demo")
+                                    Text("Invitado")
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding()
