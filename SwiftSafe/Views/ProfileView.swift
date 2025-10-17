@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 // MARK: - Vista de Perfil
 /*
@@ -16,6 +17,7 @@ struct ProfileView: View {
     @State private var showingNotifications = false
     @State private var showingAbout = false
     @State private var showingLogoutAlert = false
+    @State private var profileImage: UIImage?
     
     var body: some View {
         NavigationView {
@@ -63,6 +65,16 @@ struct ProfileView: View {
             } message: {
                 Text("¿Estás seguro de que quieres cerrar sesión?")
             }
+            .onAppear {
+                loadProfileImage()
+            }
+        }
+    }
+    
+    private func loadProfileImage() {
+        if let imageData = UserDefaults.standard.data(forKey: "userProfileImageData"),
+           let image = UIImage(data: imageData) {
+            profileImage = image
         }
     }
     
@@ -87,9 +99,17 @@ struct ProfileView: View {
                         )
                         .frame(width: 120, height: 120)
                     
-                    Image(systemName: authManager.currentUser?.profileImage ?? "person.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.white)
+                    if let profileImage = profileImage {
+                        Image(uiImage: profileImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 120, height: 120)
+                            .clipShape(Circle())
+                    } else {
+                        Image(systemName: authManager.currentUser?.profileImage ?? "person.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.white)
+                    }
                     
                     // Indicador de edición
                     Circle()
@@ -428,6 +448,7 @@ struct EditProfileView: View {
     @AppStorage("userCity") private var userCity: String = ""
     @AppStorage("userCountry") private var userCountry: String = ""
     @AppStorage("hasDisability") private var hasDisability: Bool = false
+    @AppStorage("userProfileImage") private var userProfileImage: String = "person.circle.fill"
     
     @State private var name: String = ""
     @State private var lastName: String = ""
@@ -437,6 +458,12 @@ struct EditProfileView: View {
     @State private var country: String = ""
     @State private var disability: Bool = false
     @State private var showingSaveConfirmation = false
+    
+    // Estados para manejar foto de perfil
+    @State private var showingPhotoPicker = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var profileImageData: Data?
+    @State private var uiImage: UIImage?
     
     var body: some View {
         NavigationView {
@@ -456,27 +483,54 @@ struct EditProfileView: View {
                                     )
                                     .frame(width: 100, height: 100)
                                 
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(.white)
+                                if let uiImage = uiImage {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(Circle())
+                                } else {
+                                    Image(systemName: "person.circle.fill")
+                                        .font(.system(size: 50))
+                                        .foregroundColor(.white)
+                                }
                                 
-                                Circle()
-                                    .fill(Color.blue)
-                                    .frame(width: 32, height: 32)
-                                    .overlay(
-                                        Image(systemName: "camera.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                    )
-                                    .offset(x: 35, y: 35)
+                                // Botón de cámara - funcional en posición original
+                                PhotosPicker(
+                                    selection: $selectedPhotoItem,
+                                    matching: .images,
+                                    photoLibrary: .shared()
+                                ) {
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 32, height: 32)
+                                        .overlay(
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.white)
+                                        )
+                                }
+                                .offset(x: 35, y: 35)
                             }
                             
-                            Button(action: {
-                                // Cambiar foto
-                            }) {
+                            PhotosPicker(
+                                selection: $selectedPhotoItem,
+                                matching: .images,
+                                photoLibrary: .shared()
+                            ) {
                                 Text("Cambiar foto de perfil")
                                     .font(.subheadline)
                                     .foregroundColor(.blue)
+                            }
+                            .onChange(of: selectedPhotoItem) { newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                                        profileImageData = data
+                                        if let uiImage = UIImage(data: data) {
+                                            self.uiImage = uiImage
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.vertical, 24)
@@ -496,7 +550,7 @@ struct EditProfileView: View {
                             VStack(spacing: 0) {
                                 ProfileTextField(
                                     label: "Nombre",
-                                    placeholder: "Tu nombre",
+                                    placeholder: "Juan Manuel",
                                     text: $name
                                 )
                                 
@@ -504,7 +558,7 @@ struct EditProfileView: View {
                                 
                                 ProfileTextField(
                                     label: "Apellido",
-                                    placeholder: "Tu apellido",
+                                    placeholder: "Gomez Diaz",
                                     text: $lastName
                                 )
                                 
@@ -521,7 +575,7 @@ struct EditProfileView: View {
                                 
                                 ProfileTextField(
                                     label: "Email",
-                                    placeholder: authManager.currentUser?.email ?? "tu@email.com",
+                                    placeholder: authManager.currentUser?.email ?? "juanmanugodi@gmail.com",
                                     text: .constant(authManager.currentUser?.email ?? ""),
                                     isDisabled: true
                                 )
@@ -584,7 +638,7 @@ struct EditProfileView: View {
                                         .background(Color.clear)
                                     
                                     if bio.isEmpty {
-                                        Text("Cuéntanos sobre ti...")
+                                        Text("Cuéntanos sobre ti... Apasionado por el fútbol y los deportes en general ⚽💪 ¡Siempre listo para vivir la emoción del juego")
                                             .foregroundColor(Color(UIColor.placeholderText))
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 16)
@@ -601,7 +655,7 @@ struct EditProfileView: View {
                         }
                         
                         // MARK: - Accesibilidad
-                        VStack(alignment: .leading, spacing: 0) {
+                        /*VStack(alignment: .leading, spacing: 0) {
                             Text("ACCESIBILIDAD")
                                 .font(.caption)
                                 .fontWeight(.semibold)
@@ -634,7 +688,7 @@ struct EditProfileView: View {
                             .background(Color(UIColor.systemBackground))
                             .cornerRadius(12)
                             .padding(.horizontal, 20)
-                        }
+                        }*/
                         
                         // Espaciado para el botón
                         Color.clear.frame(height: 100)
@@ -709,6 +763,12 @@ struct EditProfileView: View {
         city = userCity
         country = userCountry
         disability = hasDisability
+        
+        // Cargar imagen de perfil guardada si existe
+        if let imageData = UserDefaults.standard.data(forKey: "userProfileImageData"),
+           let image = UIImage(data: imageData) {
+            uiImage = image
+        }
     }
     
     private func saveChanges() {
@@ -719,6 +779,11 @@ struct EditProfileView: View {
         userCity = city
         userCountry = country
         hasDisability = disability
+        
+        // Guardar imagen de perfil si se seleccionó una nueva
+        if let imageData = profileImageData {
+            UserDefaults.standard.set(imageData, forKey: "userProfileImageData")
+        }
         
         withAnimation {
             showingSaveConfirmation = true
@@ -1463,8 +1528,7 @@ struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        ZStack{
-            
+        ZStack {
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color(hex: "EDFBF3"),

@@ -618,8 +618,8 @@ struct SocialFeedView: View {
             content: "La afición brasileña está lista 🎉⚽ Ambiente increíble en la ciudad",
             likes: 45,
             comments: 12,
-            hasImage: true,
-            imageName: "Estadio"
+            hasImage: false,
+            imageName: nil
         ),
         SocialPost(
             userName: "Miguel Rodríguez",
@@ -636,8 +636,8 @@ struct SocialFeedView: View {
             content: "Toronto está listo para recibir a los equipos 🏆 Increíble ver esto en persona",
             likes: 32,
             comments: 7,
-            hasImage: true,
-            imageName: "Estadio"
+            hasImage: false,
+            imageName: nil
         ),
         SocialPost(
             userName: "David Chen",
