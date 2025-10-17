@@ -1537,6 +1537,7 @@ struct AboutView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .ignoresSafeArea()
             
             NavigationView {
                 ScrollView {

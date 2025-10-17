@@ -11,6 +11,9 @@ struct HomeView: View {
     @State private var showingEventDetail = false
     @State private var selectedEventIndex = 0
     @State private var showingEmergencyOptions = false
+    @State private var currentEventIndex = 0
+    @State private var autoScrollTimer: Timer?
+    @State private var wasDetailShowing = false
     
     var body: some View {
         NavigationView {
@@ -23,16 +26,18 @@ struct HomeView: View {
                             .fontWeight(.bold)
                             .padding(.horizontal)
                         
-                        TabView {
+                        TabView(selection: $currentEventIndex) {
                             EventCardWithFlags(
                                 title: "México vs USA",
                                 subtitle: "Jueves 11 de junio de 2026",
                                 flagImage1: "bandera-mexico",
                                 flagImage2: "bandera-usa"
                             )
+                            .tag(0)
                             .onTapGesture {
                                 selectedEventIndex = 0
                                 showingEventDetail = true
+                                stopAutoScroll()
                             }
                             
                             EventCardWithFlags(
@@ -41,9 +46,11 @@ struct HomeView: View {
                                 flagImage1: "bandera-canada",
                                 flagImage2: "bandera-japon"
                             )
+                            .tag(1)
                             .onTapGesture {
                                 selectedEventIndex = 1
                                 showingEventDetail = true
+                                stopAutoScroll()
                             }
                             
                             EventCardWithFlags(
@@ -52,9 +59,11 @@ struct HomeView: View {
                                 flagImage1: "bandera-brasil",
                                 flagImage2: "bandera-ecuador"
                             )
+                            .tag(2)
                             .onTapGesture {
                                 selectedEventIndex = 2
                                 showingEventDetail = true
+                                stopAutoScroll()
                             }
                             
                             EventCard(
@@ -63,13 +72,31 @@ struct HomeView: View {
                                 image: "star.fill",
                                 backgroundColor: Color.red
                             )
+                            .tag(3)
                             .onTapGesture {
                                 selectedEventIndex = 0
                                 showingEventDetail = true
+                                stopAutoScroll()
                             }
                         }
                         .frame(height: 180)
                         .tabViewStyle(PageTabViewStyle())
+                        .onAppear {
+                            currentEventIndex = 0
+                            startAutoScroll()
+                        }
+                        .onDisappear {
+                            stopAutoScroll()
+                        }
+                        .onChange(of: showingEventDetail) { newValue in
+                            if wasDetailShowing && !newValue {
+                                // Solo reiniciar cuando se cierra (de true a false)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    startAutoScroll()
+                                }
+                            }
+                            wasDetailShowing = newValue
+                        }
                     }
                     
                     Button(action: {
@@ -147,6 +174,21 @@ struct HomeView: View {
                 EventDetailView(initialIndex: selectedEventIndex)
             }
         }
+    }
+    
+    // MARK: - Auto-scroll para eventos
+    func startAutoScroll() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentEventIndex = currentEventIndex < 3 ? currentEventIndex + 1 : 0
+            }
+        }
+    }
+    
+    func stopAutoScroll() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
     }
 }
 
@@ -1396,7 +1438,7 @@ struct EventDetailView: View {
         NavigationView {
             TabView(selection: $currentIndex) {
                 ForEach(events.indices, id: \.self) { index in
-                    MatchDetailCard(event: events[index])
+                    MatchDetailCard(event: events[index], currentIndex: $currentIndex, totalEvents: events.count)
                         .tag(index)
                 }
             }
@@ -1434,15 +1476,23 @@ struct MatchEvent {
 // MARK: - Tarjeta de Detalle de Partido
 struct MatchDetailCard: View {
     let event: MatchEvent
+    @Binding var currentIndex: Int
+    let totalEvents: Int
     
     var body: some View {
         VStack(spacing: 0) {
             // Encabezado con el título del torneo
             HStack {
-                Image(systemName: "chevron.left")
-                    .foregroundColor(.white)
-                    .font(.system(size: 16))
-                    .padding(.leading, 12)
+                Button(action: {
+                    withAnimation {
+                        currentIndex = (currentIndex - 1 + totalEvents) % totalEvents
+                    }
+                }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.white)
+                        .font(.system(size: 16))
+                        .padding(.leading, 12)
+                }
                 
                 Spacer()
                 
@@ -1457,10 +1507,16 @@ struct MatchDetailCard: View {
                 
                 Spacer()
                 
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.white)
-                    .font(.system(size: 16))
-                    .padding(.trailing, 12)
+                Button(action: {
+                    withAnimation {
+                        currentIndex = (currentIndex + 1) % totalEvents
+                    }
+                }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.white)
+                        .font(.system(size: 16))
+                        .padding(.trailing, 12)
+                }
             }
             .padding(.vertical, 12)
             .background(
