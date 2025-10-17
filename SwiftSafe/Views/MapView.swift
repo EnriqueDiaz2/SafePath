@@ -50,7 +50,7 @@ struct MapView: View {
     
     // Estado para filtros visuales
     @State private var showSavedPlaces = true
-    @State private var showNearbyFilter = false
+    @State private var showNearbyFilter = true
     
     // Estado para filtro por categoría
     @State private var selectedCategory = "Todos"
@@ -527,6 +527,28 @@ struct MapView: View {
     }
     
     /*
+     Maneja un tap en el mapa para mostrar un lugar por defecto en esa ubicación
+    */
+    private func handleMapTap() {
+        // Crear un lugar temporal con las coordenadas del centro del mapa actual
+        let coordinate = region.center
+        
+        // Crear un lugar temporal con esas coordenadas
+        let tempPlace = Place(
+            name: "Lugar Seleccionado",
+            subtitle: "Ubicación en el mapa",
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            photos: [],
+            reviews: []
+        )
+        
+        // Mostrar el lugar
+        selectedPlace = tempPlace
+        showingLocationDetails.toggle()
+    }
+    
+    /*
      Centra el mapa en la ubicación actual del usuario
     */
     private func centerOnUserLocation() {
@@ -679,22 +701,23 @@ struct PlaceAnnotationView: View {
     }
     
     var body: some View {
-        Button(action: onTap) {
-            let placeIcon = iconForPlace()
+        let placeIcon = iconForPlace()
+        
+        VStack(spacing: 0) {
+            // Icono dinámico según el tipo de lugar
+            Image(systemName: placeIcon.icon)
+                .font(.title)
+                .foregroundColor(placeIcon.color)
             
-            VStack(spacing: 0) {
-                // Icono dinámico según el tipo de lugar
-                Image(systemName: placeIcon.icon)
-                    .font(.title)
-                    .foregroundColor(placeIcon.color)
-                
-                Image(systemName: "triangle.fill")
-                    .font(.caption)
-                    .foregroundColor(placeIcon.color)
-                    .offset(x: 0, y: -5)
-            }
+            Image(systemName: "triangle.fill")
+                .font(.caption)
+                .foregroundColor(placeIcon.color)
+                .offset(x: 0, y: -5)
         }
         .scaleEffect(isSaved ? 1.2 : 1.0)
+        .onTapGesture {
+            onTap()
+        }
     }
 }
 
@@ -929,6 +952,7 @@ struct LocationDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var showingSaveConfirmation = false
+    @State private var showingDirections = false
     
     // Verificar si el lugar ya está guardado
     var isPlaceSaved: Bool {
@@ -1145,7 +1169,7 @@ struct LocationDetailView: View {
                                 }
                             }
                             
-                            Button(action: openInMaps) {
+                            Button(action: { showingDirections = true }) {
                                 HStack {
                                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                                         .foregroundColor(.blue)
@@ -1211,6 +1235,11 @@ struct LocationDetailView: View {
         } message: {
             Text("'\(place.name)' ha sido guardado en tus lugares favoritos")
         }
+        .sheet(isPresented: $showingDirections) {
+            DirectionsMenuView(place: place, onDismiss: {
+                showingDirections = false
+            })
+        }
     }
     
     // MARK: - Métodos
@@ -1221,13 +1250,6 @@ struct LocationDetailView: View {
             appDataManager.favoritePlaces.append(place)
             showingSaveConfirmation = true
         }
-    }
-    
-    private func openInMaps() {
-        let coordinate = CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
-        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-        mapItem.name = place.name
-        mapItem.openInMaps()
     }
     
     private func shareLocation() {
@@ -2003,3 +2025,176 @@ struct QuickLocationOptionsView: View {
         }
     }
 }
+
+// MARK: - Vista de Menú de Direcciones
+struct DirectionsMenuView: View {
+    let place: Place
+    let onDismiss: () -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.title3)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Cómo llegar")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                    
+                    Color.clear
+                        .frame(width: 44)
+                }
+                .padding()
+                
+                Divider()
+                
+                // Opciones de navegación
+                ScrollView {
+                    VStack(spacing: 12) {
+                        // Opción 1: Abrir en Apple Maps
+                        Button(action: {
+                            openInAppleMaps()
+                            dismiss()
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: "map.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.blue)
+                                    .frame(width: 30)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Abrir en Mapas")
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Navega con Apple Maps")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        
+                        // Opción 2: Google Maps
+                        Button(action: {
+                            openInGoogleMaps()
+                            dismiss()
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: "globe")
+                                    .font(.title3)
+                                    .foregroundColor(.red)
+                                    .frame(width: 30)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Google Maps")
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Navega con Google Maps")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        
+                        // Opción 3: Copiar coordenadas
+                        Button(action: {
+                            copyCoordinates()
+                            dismiss()
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: "location.circle.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.green)
+                                    .frame(width: 30)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Copiar Coordenadas")
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Lat: \(String(format: "%.4f", place.latitude)), Lng: \(String(format: "%.4f", place.longitude))")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .navigationBarHidden(true)
+        }
+    }
+    
+    // Funciones de navegación
+    private func openInAppleMaps() {
+        let coordinate = CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        mapItem.name = place.name
+        let launchOptions = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
+        mapItem.openInMaps(launchOptions: launchOptions)
+    }
+    
+    private func openInGoogleMaps() {
+        let urlString = "comgooglemaps://?saddr=&daddr=\(place.latitude),\(place.longitude)&directionsmode=driving"
+        
+        if let url = URL(string: urlString) {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url)
+            } else {
+                // Si Google Maps no está instalado, abre en web
+                let webURL = "https://www.google.com/maps/search/?api=1&query=\(place.latitude),\(place.longitude)"
+                if let url = URL(string: webURL) {
+                    UIApplication.shared.open(url)
+                }
+            }
+        }
+    }
+    
+    private func copyCoordinates() {
+        let coordinates = "\(String(format: "%.4f", place.latitude)), \(String(format: "%.4f", place.longitude))"
+        UIPasteboard.general.string = coordinates
+    }
+}
+
